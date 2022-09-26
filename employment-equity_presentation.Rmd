@@ -1,0 +1,410 @@
+---
+title: "Employment Equity: An Analysis of Distribution of Salary Ranges of Public Service of Canada Employees"
+author: "Brittny Vongdara & Catalina Albury"
+date: "9/26/2022"
+output: 
+    slidy_presentation:
+    self_contained: yes
+    widescreen: yes
+
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r , warning = FALSE, echo =  FALSE, message = FALSE}
+# Load libraries ----
+library(rvest)
+library(dplyr)
+library(tidyr)
+library(plotly)
+
+# Function ----
+remove_commas <- function(comma_cols) {
+  as.numeric(gsub(
+    pattern = ",",
+    replacement = "",
+    x = comma_cols
+  ))
+}
+
+# Refer to TBS website for web scraping
+url <-
+  "https://www.canada.ca/en/treasury-board-secretariat/services/innovation/human-resources-statistics/diversity-inclusion-statistics/distribution-public-service-canada-employees-designated-sub-group-salary-range-"
+
+# Gather and manipulate data ----
+df <-
+  merge(x = {
+    ## Visible Minority and Black employees ----
+    {
+      html_nodes(read_html(paste0(url,
+                                  "members-visible-minorities")), "table") %>%
+        html_table(fill = TRUE)
+    }[[1]][-c(1, 19), c(1:4, 25)] %>% # retrieve all employees and total vm column
+      rename(
+        salary_range = "Salary range ($)",
+        count_all = "All employees",
+        count_black = "Black",
+        count_vm = "Members of visible minorities"
+      )
+  },
+  y = {
+    ## Indigenous ----
+    {
+      html_nodes(read_html(paste0(url,
+                                  "indigenous-peoples")), "table") %>%
+        html_table(fill = TRUE)
+    }[[1]][-c(1, 19), c(1, 11)] %>% # retrieve total indigenous column
+      rename(salary_range = "Salary range ($)",
+             count_indigenous = "Indigenous Peoples")
+  },
+  by = "salary_range",
+  all = TRUE) %>%
+  merge(y = {
+    ## Persons with disabilities ----
+    {
+      html_nodes(read_html(paste0(url,
+                                  "persons-disabilities")), "table") %>%
+        html_table(fill = TRUE)
+    }[[1]][-c(1, 19), c(1, 15)] %>% # retrieve total pwd column
+      rename(salary_range = "Salary range ($)",
+             count_pwd = "Persons with disabilities")
+  },
+  by = "salary_range",
+  all = TRUE) %>% 
+  mutate(across(everything(), ~ replace(., . ==  "Table 1 Footnote *" , NA))) %>% # replace foonote with NA
+  mutate_at(vars(matches("count")), remove_commas) %>% # remove commas
+  mutate(
+    salary_range = sub(
+      pattern = "    ",
+      replacement = " ",
+      x = salary_range
+    ), # remove extra spaces in salary range column
+    range_group = case_when(
+      salary_range %in% c(
+        "Under 25,000",
+        "25,000 to 49,999",
+        "50,000 to 54,999",
+        "55,000 to 59,999"
+      ) ~ "Less than $60,000",
+      salary_range %in% c("60,000 to 64,999", "65,000 to 69,999") ~ "$60,000 to $69,999",
+      salary_range %in% c("70,000 to 74,999", "75,000 to 79,999", "80,000 to 84,999") ~ "$70,000 to $84,999",
+      salary_range %in% c("85,000 to 89,999",
+                          "90,000 to 94,999",
+                          "95,000 to 99,999") ~ "$85,000 to $99,999",
+      salary_range %in% c(
+        "100,000 to 149,999",
+        "150,000 to 199,999",
+        "200,000 to 249,999",
+        "250,000 and over"
+      ) ~ "Over $100,000K",
+      TRUE ~ "All ranges"
+    )
+  ) %>% # group salary ranges to match Dr. Martin's numbers
+  group_by(range_group) %>%
+  summarize(
+    count_all = sum(count_all, na.rm = TRUE),
+    count_black = sum(count_black, na.rm = TRUE),
+    count_vm = sum(count_vm, na.rm = TRUE),
+    count_non_vm = count_all - count_vm,
+    count_indigenous = sum(count_indigenous, na.rm = TRUE),
+    count_pwd = sum(count_pwd, na.rm = TRUE)) %>% 
+  ungroup() # summarize values in predetermined salary range groups
+
+#'NOTE [needed to reorder the rows before this chunk of code]
+df <- 
+  df[c(5, 1, 2, 3, 6, 4), ] %>% 
+  mutate(
+    # create new column for percentage of representation within subgroup
+    per_all = round(count_all / count_all[n()] * 100, 2),
+    per_black = round(count_black / count_black[n()] * 100, 2),
+    per_vm = round(count_vm / count_vm[n()] * 100, 2),
+    per_non_vm = round(count_non_vm / count_non_vm[n()] * 100, 2),
+    per_indigenous = round(count_indigenous / count_indigenous[n()] * 100, 2),
+    per_pwd = round(count_pwd / count_pwd[n()] * 100, 2),
+    
+    # create new column for disproportionality index (DI)
+    di_all = 1,
+    di_black = round(per_black / per_all, 2),
+    di_vm = round(per_vm / per_all, 2),
+    di_non_vm = round(per_non_vm / per_all, 2),
+    di_indigenous = round(per_indigenous / per_all, 2),
+    di_pwd = round(per_pwd / per_all, 2),
+    
+    # create new column to highlight difference from 1 for DI
+    chart_black = di_black - 1,
+    chart_vm = di_vm - 1,
+    chart_non_vm = di_non_vm - 1,
+    chart_indigenous = di_indigenous - 1,
+    chart_pwd = di_pwd - 1,
+  ) %>%
+  select(
+    range_group,
+    per_all,
+    di_all,
+    
+    per_black,
+    di_black,
+    chart_black,
+    
+    per_vm,
+    di_vm,
+    chart_vm,
+    
+    per_non_vm,
+    di_non_vm,
+    chart_non_vm,
+    
+    per_indigenous,
+    di_indigenous,
+    chart_indigenous,
+    
+    per_pwd,
+    di_pwd,
+    chart_pwd
+  ) %>%
+  pivot_longer(cols = matches(c("per", "di", "chart")),
+               names_to = "temp",
+               values_to = "value") %>% # reshape data so it's easier to deal with
+  mutate(
+    # separate into unit of measure
+    uom = case_when(grepl(pattern = "^per", x = as.character(temp)) ~ "Percent", 
+                    grepl(pattern = "^di", x = as.character(temp)) ~ "DI",
+                    grepl(pattern = "^chart", x = as.character(temp)) ~ "Chart"),
+    # separate into subgroups
+    subgroup = case_when(
+      grepl(pattern = "all$", x = temp) ~ "All",
+      grepl(pattern = "black$", x = temp) ~ "Black",
+      grepl(pattern = "non_vm$", x = temp) ~ "Non Visible Minorities",
+      grepl(pattern = "_vm$", x = temp) ~ "Visible Minorities",
+      grepl(pattern = "indigenous$", x = temp) ~ "Indigenous",
+      grepl(pattern = "pwd$", x = temp) ~ "Persons with disabilities"
+    ),
+    # add colours for easier consumption in charts
+    chart_colour = case_when((uom == "Chart" & value > 0) ~ "red",
+                             (uom == "Chart" & value < 0) ~ "green",
+                             TRUE ~ NA_character_
+    )
+  ) %>% # FIXME: I feel like this section could be done better?
+  select("Salary range" = range_group, Value = value, "Unit of measure" = uom, Subgroup = subgroup, chart_colour)
+
+
+# Remove "all ranges" entries
+df <- df %>% filter(`Salary range` != "All ranges")
+
+# Neater salary categories
+df$`Salary range` <- factor(df$`Salary range`, 
+                            levels = c("Less than $60,000", "$60,000 to $69,999", "$70,000 to $84,999", "$85,000 to $99,999",  "Over $100,000K" ), 
+                            labels = c("<60.0K", "60.0-69.9K", "70.0-84.9K", "85.0-99.9K", "100.0K+"))
+
+# Remove "all" category entries
+df <- df %>% filter(Subgroup != "All")
+
+# Better group descriptions
+df$Subgroup <- factor(df$Subgroup,
+                      levels = c("Non Visible Minorities","Visible Minorities",  "Persons with disabilities", "Indigenous", "Black"), 
+                      labels = c("Non-Visible Minority Employees", "Visible Minority Employees",  "Employees with Disabilities", "Indigenous Employees", "Black Employees"))
+
+```
+# The Data
+
+* March 2021
+
+* Disproportionality Index: a measure of fair representation
+
+$$\frac{\%_{Group\: X; \:salary\: range \: i}}{\% _{All \:Employees; \:salary\: range \: i}} = DI _{Group\:X; \:salary\:range\:i}$$
+  * For example, 23.3% of Black employees and 16.7% of all employees are are within the <60K salary range. 
+
+$$ DI_{Black \: employees; <60K } =\frac{23.3\%}{16.7\%} = 1.40$$
+
+
+
+# Plot 1: DI of all groups by salary range
+
+The dotted line represents equitable representation. It can been seen that Black employees are overrepresented at the lower salary ranges and underrepresented at higher ranges compared to the other groups. As can be seen by the "All Non-Minority Employees" bars, an equal DI across all salary ranges should be expected. 
+
+
+
+```{r Plot 1, echo = FALSE, message = FALSE, warning = FALSE, fig.width = 10, fig.height = 7.5}
+
+library(MetBrewer)
+
+# Select only DI data 
+salarydataplot1 <-  df %>% filter(`Unit of measure` == "DI")
+
+# Make a vector with corresponding colors
+colors = met.brewer("Johnson", 5)
+
+# Bar plot showing salary ranges by group 
+ggplot(salarydataplot1, aes(fill = Subgroup, 
+                            y = Value,
+                            x = `Salary range`)) + 
+  geom_bar(position = 'dodge', 
+           stat ='identity') +
+  theme_classic() +
+  xlab("Annual Salary ($)") +
+  ylab("Disproportionality Index") +
+  geom_hline(yintercept = 1, 
+             linetype = "dashed") +
+  scale_fill_manual(
+    values = colors) +
+  coord_cartesian(ylim = c(.5, 1.5)) +
+  theme(legend.position = "top",
+        legend.title=element_blank(),
+       text = element_text(size = 15),
+       legend.text = element_text(size = 12)) +
+  guides(fill = guide_legend(nrow=2, byrow=TRUE)) +
+  annotate("text", 
+           y = 1.02, 
+            x= "100.0K+",
+            hjust = .25, 
+            label = "Overrepresented") +
+  annotate("text", 
+           y = 0.98, 
+            x= "100.0K+",
+            hjust = .25, 
+            label = "Underrepresented")
+
+
+```
+
+# Plot 1: Pros and Cons
+
+**Pros**: 
+
+* This visualization allows for easy comparison between groups. 
+* The dotted line allows the reader to compare to a baseline (all non-minority employees). 
+
+**Cons**: 
+
+* This is a static figure. 
+* It is a little busier than others presented later. 
+
+
+# Plot 2: DI *Share* by subgroups and salary range
+
+Here, DI is subtracted from 1 to calculate a DI Share metric, meaning that 0 rather than 1 would represent equitable representation. Each column is coloured based on if the DI Share is negative or positive.  
+
+
+
+```{r Plot 2, echo = FALSE, message = FALSE, warning = FALSE, fig.width = 10, fig.height = 7.5}
+# Color pallette
+
+library(MetBrewer)
+
+colors <- met.brewer("Hiroshige", 5)[c(1,4)]
+
+# Edit chart color labels 
+df$chart_colour <- factor(df$chart_colour, 
+                          levels = c("red", "green", NA), 
+                          labels = c("Overrepresented", "Underrepresented"))
+
+ggplotly({
+  ggplot(df[df$`Unit of measure` == "Chart" &
+              df$`Salary range` != "All ranges", ]) +
+    geom_bar(
+      stat = "identity",
+      position = "dodge",
+      aes(
+        x = factor(
+          x = `Salary range`
+        ),
+        y = Value,
+        fill = chart_colour,
+        text = paste0(
+          "Subgroup: ", Subgroup,
+          "<br>",
+          "Salary range: ", `Salary range`,
+          "<br>",
+          "Disproportionality Index: ", round(Value, 2)
+        )
+      )
+    ) +
+    theme_minimal() +
+        scale_fill_manual(labels = c("Underrepresented", "Overrepresented"), 
+                      values = colors,
+                      name = "") +
+    theme(legend.position="bottom",
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.background = element_blank(),
+      axis.line = element_line(colour = "black"),        
+      text = element_text(size = 12),
+      legend.text = element_text(size = 12)) +
+    labs(title = NULL,
+         x = "Salary range",
+         y = "DI share") +
+    facet_wrap(facets = ~ factor(
+      x = Subgroup
+    ),
+    ncol = 1)
+}, tooltip = "text")
+
+```
+ 
+# Plot 2: Pros and Cons
+
+**Pros:**
+
+* Under/overrepresentation is easiest to identify in this figure. 
+* This is an interactive visualization, allowing the user to hover on each bar and see the specific values associated with it. 
+
+**Cons:**  
+
+* Even values that would normally be considered "close enough" to 0, representing an about equitable DI share are designated a color, perhaps leading to some confusion. 
+* Comparison between groups within a salary level is not as intuitive here.
+
+
+# Plot 3: A direct comparison of DI in Black Employees vs. Non-Visible Minority Employees
+
+This plot zooms in on our "baseline" group and compares it to the Black employee group, which appears to be the most affected by inequity. A steady decrease in representation with each increase in salary range is clearly visible for the Black employee group. 
+
+
+ 
+```{r Plot 3, echo = FALSE, message = FALSE, warning = FALSE, fig.width = 10, fig.height = 7.5}
+ 
+colors <- met.brewer("Johnson", 5)[c(1,5)]
+
+
+ggplot(df[df$`Unit of measure` == "DI" &
+            df$Subgroup %in% c("Non-Visible Minority Employees", "Black Employees"),]) +
+  geom_bar(stat = "identity",
+           position = "dodge",
+           aes(x = Subgroup,
+               y = Value,
+               fill = Subgroup, 
+               alpha = `Salary range`)) +
+  theme_minimal() +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black"), 
+    text = element_text(size = 15),
+    legend.text = element_text(size = 12)
+  ) +
+  scale_fill_manual  (values = colors, 
+                      ) +
+  labs(title = NULL,
+       x = NULL,
+       y = "Disproportionality Index",
+       fill = NULL) + 
+  guides(fill="none")
+
+ 
+```
+
+# Plot 3: Pros and Cons
+
+**Pros:** 
+
+* This plot tells the most focused story of the three. 
+* Transparency represents salary range, with lighter colors representing lower salary. 
+
+**Cons:** 
+
+  * This is another static figure. 
+  * Data from the other groups that would otherwise strengthen the core message is     not included for brevity's sake. 
