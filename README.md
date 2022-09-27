@@ -1,13 +1,19 @@
-# Employment Equity
+# Employment Equity: An Analysis of Distribution of Salary Ranges of Public Service of Canada Employees
 
-We'll be using this space to produce some data visualizations as an ask from Dr. Martin Nicholas (Health Canada), Shamir Kanji (Canada Revenue Agency), Sean Karmali (Statistics Canada), Niha Shahzad (Natural Resources Canada), and Muhammed Ali Khan (Indigenous Services Canada).
 
-Here is where you can find the publicly available data [here](https://www.canada.ca/en/treasury-board-secretariat/services/innovation/human-resources-statistics/diversity-inclusion-statistics.html).
+## About
+This repository contains code to visualize  employee salary data from the Government of Canada's Treasury Board, [publically available here](https://www.canada.ca/en/treasury-board-secretariat/services/innovation/human-resources-statistics/diversity-inclusion-statistics.html). A webpage with outputs and finding can be found [here](index).
 
-You can find additional data here:
+## The Data
+This data is based on self identification of equity-deserving groups, and represents pre-tax salary ranges excluding bonuses and promotions. In order to obtain the data, the webpage was scraped with the R package `rvest`. Then, `dplyr` and `tidyr` were used to clean it up and plotting was done with `ggplot` and `plotly`. 
 
-- [Indigenous peoples](https://www.canada.ca/en/treasury-board-secretariat/services/innovation/human-resources-statistics/diversity-inclusion-statistics/distribution-public-service-canada-employees-designated-sub-group-salary-range-indigenous-peoples.html)
-- [Persons with disabilities](https://www.canada.ca/en/treasury-board-secretariat/services/innovation/human-resources-statistics/diversity-inclusion-statistics/distribution-public-service-canada-employees-designated-sub-group-salary-range-persons-disabilities.html)
-- [Members of visible minories](https://www.canada.ca/en/treasury-board-secretariat/services/innovation/human-resources-statistics/diversity-inclusion-statistics/distribution-public-service-canada-employees-designated-sub-group-salary-range-members-visible-minorities.html)
 
-We're only looking at data for 2021.
+## Acknowledgements
+ This project was initatated as ask from Dr. Martin Nicholas (Health Canada), Shamir Kanji (Canada Revenue Agency), Sean Karmali (Statistics Canada), Niha Shahzad (Natural Resources Canada), and Muhammed Ali Khan (Indigenous Services Canada). Data vizualization was completed by Brittny Vongdara and Catalina Albury (Statistics Canada). 
+
+
+
+
+
+
+
