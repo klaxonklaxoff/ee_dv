@@ -30,6 +30,7 @@ library(dplyr)
 library(tidyr)
 library(plotly)
 library(flextable)
+library(stringr)
 
 # Function ----
 remove_commas <- function(comma_cols) {
@@ -258,13 +259,13 @@ df$Subgroup <- factor(df$Subgroup,
 
 
 
-# Plot 1: DI of all groups by salary range
+# Plot 1: DI of all groups by salary range {.tabset}
 
 The dotted line represents equitable representation. It can been seen that Black employees are overrepresented at the lower salary ranges and underrepresented at higher ranges compared to the other groups. As can be seen by the "All Non-Minority Employees" bars, an equal DI across all salary ranges should be expected. 
 
 
-
-```{r Plot 1, echo = FALSE, message = FALSE, warning = FALSE, fig.width = 10, fig.height = 7.5}
+## English
+```{r Plot 1 English, echo = FALSE, message = FALSE, warning = FALSE, fig.width = 10, fig.height = 7.5}
 
 library(MetBrewer)
 
@@ -307,26 +308,61 @@ ggplot(salarydataplot1, aes(fill = Subgroup,
 
 ```
 
-# Plot 1: Pros and Cons
 
-**Pros**: 
+## Français
+```{r Plot 1 French, echo = FALSE, message = FALSE, warning = FALSE, fig.width = 10, fig.height = 7.5}
+# Select only DI data 
+salarydataplot1 <-  df %>% filter(`Unit of measure` == "DI")
 
-* This visualization allows for easy comparison between groups. 
-* The dotted line allows the reader to compare to a baseline (all non-minority employees). 
-
-**Cons**: 
-
-* This is a static figure. 
-* It is a little busier than others presented later. 
+# Make a vector with corresponding colors
+colors = met.brewer("Johnson", 5)
 
 
-# Plot 2: DI *Share* by subgroups and salary range
+#French labels
+salarydataplot1$Subgroup <- factor(salarydataplot1$Subgroup,
+                      levels = c("Non-Visible Minority Employees", "Visible Minority Employees",  "Employees with Disabilities", "Indigenous Employees", "Black Employees"),
+                      labels = c("Employés ne faisant \n pas partie des minorités visibles", "Employés appartenant \n à une minorité visible",  "Employés en\n  Situation de Handicap", "Employés Indigène", "Employés Noire"))
+
+# Bar plot showing salary ranges by group 
+ggplot(salarydataplot1, aes(fill = Subgroup, 
+                            y = Value,
+                            x = `Salary range`)) + 
+  geom_bar(position = 'dodge', 
+           stat ='identity') +
+  theme_classic() +
+  xlab("Salaire Annuel ($)") +
+  ylab("Indice de Disproportionnalité") +
+  geom_hline(yintercept = 1, 
+             linetype = "dashed") +
+  scale_fill_manual(
+    values = colors) +
+  coord_cartesian(ylim = c(.5, 1.5)) +
+  theme(legend.position = "top",
+        legend.title=element_blank(),
+       text = element_text(size = 15),
+       legend.text = element_text(size = 12)) +
+  guides(fill = guide_legend(nrow=2, byrow=TRUE)) +
+  annotate("text", 
+           y = 1.02, 
+            x= "100.0K+",
+            hjust = .25, 
+            label = "Surreprésenté") +
+  annotate("text", 
+           y = 0.98, 
+            x= "100.0K+",
+            hjust = .25, 
+            label = "Sous-représentés")
+```
+
+
+
+# Plot 2: DI *Share* by subgroups and salary range{.tabset}
 
 Here, DI is subtracted from 1 to calculate a DI Share metric, meaning that 0 rather than 1 would represent equitable representation. Each column is coloured based on if the DI Share is negative or positive.  
 
 
-
-```{r Plot 2, echo = FALSE, message = FALSE, warning = FALSE, fig.width = 10, fig.height = 7.5}
+## English
+```{r Plot 2 English, echo = FALSE, message = FALSE, warning = FALSE, fig.width = 10, fig.height = 7.5}
 # Color pallette
 
 library(MetBrewer)
@@ -381,26 +417,79 @@ ggplotly({
 
 ```
  
-# Plot 2: Pros and Cons
+ 
 
-**Pros:**
+## Français
 
-* Under/overrepresentation is easiest to identify in this figure. 
-* This is an interactive visualization, allowing the user to hover on each bar and see the specific values associated with it. 
+```{r Plot 2 French, echo = FALSE, message = FALSE, warning = FALSE, fig.width = 10, fig.height = 7.5}
+# Color pallette
 
-**Cons:**  
+library(MetBrewer)
 
-* Even values that would normally be considered "close enough" to 0, representing an about equitable DI share are designated a color, perhaps leading to some confusion. 
-* Comparison between groups within a salary level is not as intuitive here.
+plot2_fr <- df 
 
+colors <- met.brewer("Hiroshige", 5)[c(1,4)]
 
-# Plot 3: A direct comparison of DI in Black Employees vs. Non-Visible Minority Employees
+# Edit chart color labels 
+plot2_fr$chart_colour <- factor(plot2_fr$chart_colour, 
+                          levels = c("Overrepresented", "Underrepresented"), 
+                          labels = c("Surreprésenté", "Sous-représenté" ))
+
+#French labels
+plot2_fr$Subgroup <- factor(plot2_fr$Subgroup,
+                      levels = c("Non-Visible Minority Employees", "Visible Minority Employees",  "Employees with Disabilities", "Indigenous Employees", "Black Employees"),
+                      labels = c("Employés ne faisant \n pas partie des minorités visibles", "Employés appartenant \n à une minorité visible",  "Employés en\n  Situation de Handicap", "Employés Indigène", "Employés Noire"))
+
+ggplotly({
+  ggplot(plot2_fr[plot2_fr$`Unit of measure` == "Chart" &
+              plot2_fr$`Salary range` != "All ranges", ]) +
+    geom_bar(
+      stat = "identity",
+      position = "dodge",
+      aes(
+        x = factor(
+          x = `Salary range`
+        ),
+        y = Value,
+        fill = chart_colour,
+        text = paste0(
+          "Subgroup: ", Subgroup,
+          "<br>",
+          "Salary range: ", `Salary range`,
+          "<br>",
+          "Disproportionality Index: ", round(Value, 2)
+        )
+      )
+    ) +
+    theme_minimal() +
+        scale_fill_manual(labels = c("Sous-représentés", "Surreprésenté"), 
+                      values = colors,
+                      name = "") +
+    theme(legend.position="bottom",
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.background = element_blank(),
+      axis.line = element_line(colour = "black"),        
+      text = element_text(size = 12),
+      legend.text = element_text(size = 12)) +
+    labs(title = NULL,
+         x = "Salary range",
+         y = "DI share") +
+    facet_wrap(facets = ~ factor(
+      x = Subgroup
+    ),
+    ncol = 1)
+}, tooltip = "text")
+
+```
+
+# Plot 3: A direct comparison of DI in Black Employees vs. Non-Visible Minority Employees{.tabset}
 
 This plot zooms in on our "baseline" group and compares it to the Black employee group, which appears to be the most affected by inequity. A steady decrease in representation with each increase in salary range is clearly visible for the Black employee group. 
 
 
- 
-```{r Plot 3, echo = FALSE, message = FALSE, warning = FALSE, fig.width = 10, fig.height = 7.5}
+## English
+```{r Plot 3 eng, echo = FALSE, message = FALSE, warning = FALSE, fig.width = 10, fig.height = 7.5}
  
 colors <- met.brewer("Johnson", 5)[c(1,5)]
 
@@ -433,14 +522,45 @@ ggplot(df[df$`Unit of measure` == "DI" &
  
 ```
 
-# Plot 3: Pros and Cons
+## Français
+```{r Plot 3 fr, echo = FALSE, message = FALSE, warning = FALSE, fig.width = 10, fig.height = 7.5}
+ 
+colors <- met.brewer("Johnson", 5)[c(1,5)]
 
-**Pros:** 
+plot3_fr <- df
 
-* This plot tells the most focused story of the three. 
-* Transparency represents salary range, with lighter colors representing lower salary. 
+#French labels
+plot3_fr$Subgroup <- factor(plot3_fr$Subgroup,
+                      levels = c("Non-Visible Minority Employees", "Visible Minority Employees",  "Employees with Disabilities", "Indigenous Employees", "Black Employees"),
+                      labels = c("Employés ne faisant \n pas partie des minorités visibles", "Employés appartenant \n à une minorité visible",  "Employés en\n  Situation de Handicap", "Employés Indigène", "Employés Noire"))
 
-**Cons:** 
+ggplot(plot3_fr[plot3_fr$`Unit of measure` == "DI" &
+            plot3_fr$Subgroup %in% c("Employés ne faisant \n pas partie des minorités visibles", "Employés Noire"),]) +
+  geom_bar(stat = "identity",
+           position = "dodge",
+           aes(x = Subgroup,
+               y = Value,
+               fill = Subgroup, 
+               alpha = `Salary range`)) +
+  theme_minimal() +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black"), 
+    text = element_text(size = 15),
+    legend.text = element_text(size = 12)
+  ) +
+  scale_fill_manual  (values = colors, 
+                      ) +
+  labs(title = NULL,
+       x = NULL,
+       y = "Indice de disproportionnalité",
+       fill = NULL) + 
+  guides(fill = "none", 
+         alpha = guide_legend(title = "Èchelle Salariale"))
+  
+  
 
-  * This is another static figure. 
-  * Data from the other groups that would otherwise strengthen the core message is     not included for brevity's sake. 
+ 
+```
