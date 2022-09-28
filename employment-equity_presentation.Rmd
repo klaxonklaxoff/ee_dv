@@ -2,17 +2,25 @@
 title: "Employment Equity: An Analysis of Distribution of Salary Ranges of Public Service of Canada Employees"
 author: "Brittny Vongdara & Catalina Albury"
 date: "9/26/2022"
-output: 
-    slidy_presentation:
-    self_contained: yes
-    widescreen: yes
-
+output: html_document 
 ---
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+# The Data
 
+* March 2021
+
+* Disproportionality Index: a measure of fair representation
+
+$$\frac{\%_{Group\: X; \:salary\: range \: i}}{\% _{All \:Employees; \:salary\: range \: i}} = DI _{Group\:X; \:salary\:range\:i}$$
+
+* For example, 23.3% of Black employees and 16.7% of all employees are are within the <60K salary range. 
+
+$$ DI_{Black \: employees; <60K } =\frac{23.3\%}{16.7\%} = 1.40$$
+
+Below are the values used to create the figures.
 
 
 ```{r , warning = FALSE, echo =  FALSE, message = FALSE}
@@ -21,6 +29,7 @@ library(rvest)
 library(dplyr)
 library(tidyr)
 library(plotly)
+library(flextable)
 
 # Function ----
 remove_commas <- function(comma_cols) {
@@ -165,7 +174,40 @@ df <-
     per_pwd,
     di_pwd,
     chart_pwd
-  ) %>%
+  ) 
+
+# Create table to show raw data 
+# Remove chart columns amd convert to flextable object
+export_table <- flextable(select(df, -contains("chart")))
+
+# Change header labels
+export_table <- set_header_labels(export_table,
+  values = list(
+    range_group = "Salary Range",
+    per_all = "Percent",
+    di_all = "DI",
+    per_black = "Percent",
+    di_black = "DI",
+    per_vm = "Percent",
+    di_vm = "DI",
+    per_non_vm = "Percent",
+    di_non_vm = "DI",
+    per_indigenous = "Percent",
+    di_indigenous = "DI",
+    per_pwd = "Percent",
+    di_pwd = "DI"
+  )
+)
+
+export_table <-  add_header_row(export_table,
+                     colwidths = c(1, 2,2,2,2,2,2),
+                     values = c(" ", "All Employees", "Black Employees", "All Visible Minority Employees", "Non-Visible Minority Employees", "Indigenous Employees", "Employees with Disabilities"))
+
+theme_zebra(export_table)
+
+
+
+df <- df %>% 
   pivot_longer(cols = matches(c("per", "di", "chart")),
                names_to = "temp",
                values_to = "value") %>% # reshape data so it's easier to deal with
@@ -192,6 +234,7 @@ df <-
   select("Salary range" = range_group, Value = value, "Unit of measure" = uom, Subgroup = subgroup, chart_colour)
 
 
+
 # Remove "all ranges" entries
 df <- df %>% filter(`Salary range` != "All ranges")
 
@@ -209,16 +252,9 @@ df$Subgroup <- factor(df$Subgroup,
                       labels = c("Non-Visible Minority Employees", "Visible Minority Employees",  "Employees with Disabilities", "Indigenous Employees", "Black Employees"))
 
 ```
-# The Data
 
-* March 2021
 
-* Disproportionality Index: a measure of fair representation
 
-$$\frac{\%_{Group\: X; \:salary\: range \: i}}{\% _{All \:Employees; \:salary\: range \: i}} = DI _{Group\:X; \:salary\:range\:i}$$
-  * For example, 23.3% of Black employees and 16.7% of all employees are are within the <60K salary range. 
-
-$$ DI_{Black \: employees; <60K } =\frac{23.3\%}{16.7\%} = 1.40$$
 
 
 
