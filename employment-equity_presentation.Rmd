@@ -3,6 +3,7 @@ title: "Employment Equity: An Analysis of Distribution of Salary Ranges of Publi
 author: "Brittny Vongdara & Catalina Albury"
 date: "9/26/2022"
 output: html_document 
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'index.html')) })
 ---
 
 ```{r setup, include = FALSE}
