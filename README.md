@@ -7,7 +7,43 @@ This repository contains code to visualize  employee salary data from the Govern
 ## The Data
 This data is based on self identification of equity-deserving groups, and represents pre-tax salary ranges excluding bonuses and promotions. In order to obtain the data, the webpage was scraped with the R package `rvest`. Then, `dplyr` and `tidyr` were used to clean it up and plotting was done with `ggplot` and `plotly`. 
 
+# Plot 1: Pros and Cons
 
+**Pros**: 
+
+* This visualization allows for easy comparison between groups. 
+* The dotted line allows the reader to compare to a baseline (all non-minority employees). 
+
+**Cons**: 
+
+* This is a static figure. 
+* It is a little busier than others presented later. 
+
+# Plot 2: Pros and Cons
+
+**Pros:**
+
+* Under/overrepresentation is easiest to identify in this figure. 
+* This is an interactive visualization, allowing the user to hover on each bar and see the specific values associated with it. 
+
+**Cons:**  
+
+* Even values that would normally be considered "close enough" to 0, representing an about equitable DI share are designated a color, perhaps leading to some confusion. 
+* Comparison between groups within a salary level is not as intuitive here.
+
+
+# Plot 3: Pros and Cons
+
+**Pros:** 
+
+* This plot tells the most focused story of the three. 
+* Transparency represents salary range, with lighter colors representing lower salary. 
+
+**Cons:** 
+
+  * This is another static figure. 
+  * Data from the other groups that would otherwise strengthen the core message is     not included for brevity's sake. 
+  
 ## Acknowledgements
  This project was initatated as ask from Dr. Martin Nicholas (Health Canada), Shamir Kanji (Canada Revenue Agency), Sean Karmali (Statistics Canada), Niha Shahzad (Natural Resources Canada), and Muhammed Ali Khan (Indigenous Services Canada). Data vizualization was completed by Brittny Vongdara and Catalina Albury (Statistics Canada). 
 
