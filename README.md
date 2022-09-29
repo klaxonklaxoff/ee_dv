@@ -10,6 +10,7 @@ This data is based on self identification of equity-deserving groups, and repres
 # Plot 1: Pros and Cons
 
 [Here is a link to Plot 1 on the output webpage](https://klaxonklaxoff.github.io/ee_dv/#Plot_1:_DI_of_all_groups_by_salary_range). 
+
 **Pros**: 
 
 * This visualization allows for easy comparison between groups. 
