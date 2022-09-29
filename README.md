@@ -9,6 +9,7 @@ This data is based on self identification of equity-deserving groups, and repres
 
 # Plot 1: Pros and Cons
 
+[Here is a link to Plot 1 on the output webpage](https://klaxonklaxoff.github.io/ee_dv/#Plot_1:_DI_of_all_groups_by_salary_range). 
 **Pros**: 
 
 * This visualization allows for easy comparison between groups. 
@@ -20,6 +21,7 @@ This data is based on self identification of equity-deserving groups, and repres
 * It is a little busier than others presented later. 
 
 # Plot 2: Pros and Cons
+[Here is a link to Plot 2 on the output webpage](https://klaxonklaxoff.github.io/ee_dv/#Plot_2:_DI_Share_by_subgroups_and_salary_range). 
 
 **Pros:**
 
@@ -33,6 +35,8 @@ This data is based on self identification of equity-deserving groups, and repres
 
 
 # Plot 3: Pros and Cons
+
+[Here is a link to Plot 3 on the output webpage](https://klaxonklaxoff.github.io/ee_dv/#Plot_3:_A_direct_comparison_of_DI_in_Black_Employees_vs_Non-Visible_Minority_Employees). 
 
 **Pros:** 
 
