@@ -2,7 +2,12 @@
 title: "Employment Equity: An Analysis of Distribution of Salary Ranges of Public Service of Canada Employees"
 author: "Brittny Vongdara & Catalina Albury"
 date: "9/26/2022"
-output: html_document 
+output: 
+  html_document:
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'index.html')) })
 ---
 
@@ -283,7 +288,7 @@ ggplot(salarydataplot1, aes(fill = Subgroup,
   geom_bar(position = 'dodge', 
            stat ='identity') +
   theme_classic() +
-  xlab("Annual Salary ($)") +
+  xlab("Salary range") +
   ylab("Disproportionality Index") +
   geom_hline(yintercept = 1, 
              linetype = "dashed") +
@@ -322,7 +327,7 @@ colors = met.brewer("Johnson", 5)
 #French labels
 salarydataplot1$Subgroup <- factor(salarydataplot1$Subgroup,
                       levels = c("Non-Visible Minority Employees", "Visible Minority Employees",  "Employees with Disabilities", "Indigenous Employees", "Black Employees"),
-                      labels = c("Employés ne faisant \n pas partie des minorités visibles", "Employés appartenant \n à une minorité visible",  "Employés en\n  Situation de Handicap", "Employés Indigène", "Employés Noire"))
+                      labels = c("Employés qui ne sont pas une\nmembre de minorités visibles", "Employés membres\n de minorités visibles",  "Employés en\nsituation de handicap", "Employés autochtones", "Employés Noirs"))
 
 # Bar plot showing salary ranges by group 
 ggplot(salarydataplot1, aes(fill = Subgroup, 
@@ -331,8 +336,8 @@ ggplot(salarydataplot1, aes(fill = Subgroup,
   geom_bar(position = 'dodge', 
            stat ='identity') +
   theme_classic() +
-  xlab("Salaire Annuel ($)") +
-  ylab("Indice de Disproportionnalité") +
+  xlab("Échelle salariale") +
+  ylab("Indice de disproportionnalité") +
   geom_hline(yintercept = 1, 
              linetype = "dashed") +
   scale_fill_manual(
@@ -392,7 +397,7 @@ ggplotly({
           "<br>",
           "Salary range: ", `Salary range`,
           "<br>",
-          "Disproportionality Index: ", round(Value, 2)
+          "Disproportionality Index share: ", round(Value, 2)
         )
       )
     ) +
@@ -409,7 +414,7 @@ ggplotly({
       legend.text = element_text(size = 12)) +
     labs(title = NULL,
          x = "Salary range",
-         y = "DI share") +
+         y = "Disproportionality Index share") +
     facet_wrap(facets = ~ factor(
       x = Subgroup
     ),
@@ -439,7 +444,7 @@ plot2_fr$chart_colour <- factor(plot2_fr$chart_colour,
 #French labels
 plot2_fr$Subgroup <- factor(plot2_fr$Subgroup,
                       levels = c("Non-Visible Minority Employees", "Visible Minority Employees",  "Employees with Disabilities", "Indigenous Employees", "Black Employees"),
-                      labels = c("Employés ne faisant \n pas partie des minorités visibles", "Employés appartenant \n à une minorité visible",  "Employés en\n  Situation de Handicap", "Employés Indigène", "Employés Noire"))
+                      labels = c("Employés qui ne sont pas une\nmembre de minorités visibles", "Employés membres\n de minorités visibles",  "Employés en\nsituation de handicap", "Employés autochtones", "Employés Noirs"))
 
 ggplotly({
   ggplot(plot2_fr[plot2_fr$`Unit of measure` == "Chart" &
@@ -454,11 +459,11 @@ ggplotly({
         y = Value,
         fill = chart_colour,
         text = paste0(
-          "Subgroup: ", Subgroup,
+          "Sous-groupe : ", Subgroup,
           "<br>",
-          "Salary range: ", `Salary range`,
+          "Échelle salariale : ", `Salary range`,
           "<br>",
-          "Disproportionality Index: ", round(Value, 2)
+          "Indice de disproportionnalité partage : ", round(Value, 2)
         )
       )
     ) +
@@ -474,8 +479,8 @@ ggplotly({
       text = element_text(size = 12),
       legend.text = element_text(size = 12)) +
     labs(title = NULL,
-         x = "Salary range",
-         y = "DI share") +
+         x = "Échelle salariale",
+         y = "Indice de disproportionnalité partage") +
     facet_wrap(facets = ~ factor(
       x = Subgroup
     ),
@@ -533,10 +538,10 @@ plot3_fr <- df
 #French labels
 plot3_fr$Subgroup <- factor(plot3_fr$Subgroup,
                       levels = c("Non-Visible Minority Employees", "Visible Minority Employees",  "Employees with Disabilities", "Indigenous Employees", "Black Employees"),
-                      labels = c("Employés ne faisant \n pas partie des minorités visibles", "Employés appartenant \n à une minorité visible",  "Employés en\n  Situation de Handicap", "Employés Indigène", "Employés Noire"))
+                      labels = c("Employés qui ne sont pas une\nmembre de minorités visibles", "Employés membres\n de minorités visibles",  "Employés en\nsituation de handicap", "Employés autochtones", "Employés Noirs"))
 
 ggplot(plot3_fr[plot3_fr$`Unit of measure` == "DI" &
-            plot3_fr$Subgroup %in% c("Employés ne faisant \n pas partie des minorités visibles", "Employés Noire"),]) +
+            plot3_fr$Subgroup %in% c("Employés qui ne sont pas une\nmembre de minorités visibles", "Employés Noirs"),]) +
   geom_bar(stat = "identity",
            position = "dodge",
            aes(x = Subgroup,
@@ -559,7 +564,7 @@ ggplot(plot3_fr[plot3_fr$`Unit of measure` == "DI" &
        y = "Indice de disproportionnalité",
        fill = NULL) + 
   guides(fill = "none", 
-         alpha = guide_legend(title = "Èchelle Salariale"))
+         alpha = guide_legend(title = "Échelle salariale"))
   
   
 
