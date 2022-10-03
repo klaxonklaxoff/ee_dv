@@ -2,12 +2,7 @@
 title: "Employment Equity: An Analysis of Distribution of Salary Ranges of Public Service of Canada Employees"
 author: "Brittny Vongdara & Catalina Albury"
 date: "9/26/2022"
-output: 
-  html_document:
-    toc: true
-    toc_float:
-      collapsed: false
-      smooth_scroll: false
+output: html_document 
 knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_file = file.path(dirname(inputFile), 'index.html')) })
 ---
 
@@ -16,15 +11,17 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 # The Data
 
-Here, disproportionality index is used as a measure of equitable representation. It is calculated as below.  
+* March 2021
+
+* Disproportionality Index: a measure of fair representation
+
 $$\frac{\%_{Group\: X; \:salary\: range \: i}}{\% _{All \:Employees; \:salary\: range \: i}} = DI _{Group\:X; \:salary\:range\:i}$$
 
-For example, 23.51% of Black employees and 16.70% of all employees are are within the <60K salary range. This gives us a DI of 1.41. 
+* For example, 23.3% of Black employees and 16.7% of all employees are are within the <60K salary range. 
 
-$$ DI_{Black \: employees; <60K } =\frac{23.51\%}{16.70\%} = 1.41$$
+$$ DI_{Black \: employees; <60K } =\frac{23.3\%}{16.7\%} = 1.40$$
 
-Below are the values used to create the figures. This data is based on self identification of equity-deserving groups, and represents pre-tax salary ranges excluding bonuses and promotions, [publically availble here](https://www.canada.ca/en/treasury-board-secretariat/services/innovation/human-resources-statistics/diversity-inclusion-statistics.html). It was collected in March of 2021. Please note that this data was not imputed for suppressed numbers. For more information and the scripts used to produce this analysis, visit the project's [GitHub repository](https://github.com/klaxonklaxoff/ee_dv).
-
+Below are the values used to create the figures.
 
 
 ```{r , warning = FALSE, echo =  FALSE, message = FALSE}
@@ -35,7 +32,6 @@ library(tidyr)
 library(plotly)
 library(flextable)
 library(stringr)
-library(MetBrewer)
 
 # Function ----
 remove_commas <- function(comma_cols) {
@@ -280,6 +276,8 @@ salarydataplot1 <-  df %>% filter(`Unit of measure` == "DI")
 # Make a vector with corresponding colors
 colors = met.brewer("Johnson", 5)
 
+# Changing plot to function 
+
 # Bar plot showing salary ranges by group 
 ggplot(salarydataplot1, aes(fill = Subgroup, 
                             y = Value,
@@ -287,7 +285,7 @@ ggplot(salarydataplot1, aes(fill = Subgroup,
   geom_bar(position = 'dodge', 
            stat ='identity') +
   theme_classic() +
-  xlab("Salary range") +
+  xlab("Annual Salary ($)") +
   ylab("Disproportionality Index") +
   geom_hline(yintercept = 1, 
              linetype = "dashed") +
@@ -317,34 +315,26 @@ ggplot(salarydataplot1, aes(fill = Subgroup,
 ## Français
 ```{r Plot 1 French, echo = FALSE, message = FALSE, warning = FALSE, fig.width = 10, fig.height = 7.5}
 # Select only DI data 
-salarydataplot1_fr <-  df %>% filter(`Unit of measure` == "DI")
+salarydataplot1 <-  df %>% filter(`Unit of measure` == "DI")
 
 # Make a vector with corresponding colors
 colors = met.brewer("Johnson", 5)
 
 
 #French labels
-salarydataplot1_fr$Subgroup <- factor(salarydataplot1_fr$Subgroup,
+salarydataplot1$Subgroup <- factor(salarydataplot1$Subgroup,
                       levels = c("Non-Visible Minority Employees", "Visible Minority Employees",  "Employees with Disabilities", "Indigenous Employees", "Black Employees"),
-                      labels = c("Employés qui ne sont pas une\nmembre de minorités visibles", "Employés membres\n de minorités visibles",  "Employés en\nsituation de handicap", "Employés autochtones", "Employés Noirs"))
-
-# Change salary categories to have commas instead of periods
-salarydataplot1_fr$`Salary range` <- factor(salarydataplot1_fr$`Salary range`,
-                            levels = c("<60.0K", "60.0-69.9K", "70.0-84.9K", "85.0-99.9K", "100.0K+"),
-                            labels = c("<60,0K", "60,0-69,9K", "70,0-84,9K", "85,0-99,9K", "100,0K+"))
- 
-# Change periods to commas
-options(OutDec= ",")
+                      labels = c("Employés ne faisant \n pas partie des minorités visibles", "Employés appartenant \n à une minorité visible",  "Employés en\n  Situation de Handicap", "Employés Indigène", "Employés Noire"))
 
 # Bar plot showing salary ranges by group 
-ggplot(salarydataplot1_fr, aes(fill = Subgroup, 
+ggplot(salarydataplot1, aes(fill = Subgroup, 
                             y = Value,
                             x = `Salary range`)) + 
   geom_bar(position = 'dodge', 
            stat ='identity') +
   theme_classic() +
-  xlab("Échelle salariale") +
-  ylab("Indice de disproportionnalité") +
+  xlab("Salaire Annuel ($)") +
+  ylab("Indice de Disproportionnalité") +
   geom_hline(yintercept = 1, 
              linetype = "dashed") +
   scale_fill_manual(
@@ -357,12 +347,12 @@ ggplot(salarydataplot1_fr, aes(fill = Subgroup,
   guides(fill = guide_legend(nrow=2, byrow=TRUE)) +
   annotate("text", 
            y = 1.02, 
-            x= "100,0K+",
+            x= "100.0K+",
             hjust = .25, 
             label = "Surreprésenté") +
   annotate("text", 
            y = 0.98, 
-            x= "100,0K+",
+            x= "100.0K+",
             hjust = .25, 
             label = "Sous-représentés")
 ```
@@ -387,9 +377,6 @@ df$chart_colour <- factor(df$chart_colour,
                           levels = c("red", "green", NA), 
                           labels = c("Overrepresented", "Underrepresented"))
 
-# Change periods to commas
-options(OutDec= ".")
-
 ggplotly({
   ggplot(df[df$`Unit of measure` == "Chart" &
               df$`Salary range` != "All ranges", ]) +
@@ -407,7 +394,7 @@ ggplotly({
           "<br>",
           "Salary range: ", `Salary range`,
           "<br>",
-          "Disproportionality Index share: ", round(Value, 2)
+          "Disproportionality Index: ", round(Value, 2)
         )
       )
     ) +
@@ -424,7 +411,7 @@ ggplotly({
       legend.text = element_text(size = 12)) +
     labs(title = NULL,
          x = "Salary range",
-         y = "Disproportionality Index share") +
+         y = "DI share") +
     facet_wrap(facets = ~ factor(
       x = Subgroup
     ),
@@ -454,15 +441,7 @@ plot2_fr$chart_colour <- factor(plot2_fr$chart_colour,
 #French labels
 plot2_fr$Subgroup <- factor(plot2_fr$Subgroup,
                       levels = c("Non-Visible Minority Employees", "Visible Minority Employees",  "Employees with Disabilities", "Indigenous Employees", "Black Employees"),
-                      labels = c("Employés qui ne sont pas une\nmembre de minorités visibles", "Employés membres\n de minorités visibles",  "Employés en\nsituation de handicap", "Employés autochtones", "Employés Noirs"))
-
-# Change salary categories to have commas instead of periods
-plot2_fr$`Salary range` <- factor(plot2_fr$`Salary range`,
-                            levels = c("<60.0K", "60.0-69.9K", "70.0-84.9K", "85.0-99.9K", "100.0K+"),
-                            labels = c("<60,0K", "60,0-69,9K", "70,0-84,9K", "85,0-99,9K", "100,0K+"))
- 
-# Change periods to commas
-options(OutDec= ",")
+                      labels = c("Employés ne faisant \n pas partie des minorités visibles", "Employés appartenant \n à une minorité visible",  "Employés en\n  Situation de Handicap", "Employés Indigène", "Employés Noire"))
 
 ggplotly({
   ggplot(plot2_fr[plot2_fr$`Unit of measure` == "Chart" &
@@ -477,11 +456,11 @@ ggplotly({
         y = Value,
         fill = chart_colour,
         text = paste0(
-          "Sous-groupe : ", Subgroup,
+          "Subgroup: ", Subgroup,
           "<br>",
-          "Échelle salariale : ", `Salary range`,
+          "Salary range: ", `Salary range`,
           "<br>",
-          "Indice de disproportionnalité partage : ", round(Value, 2)
+          "Disproportionality Index: ", round(Value, 2)
         )
       )
     ) +
@@ -497,8 +476,8 @@ ggplotly({
       text = element_text(size = 12),
       legend.text = element_text(size = 12)) +
     labs(title = NULL,
-         x = "Échelle salariale",
-         y = "Indice de disproportionnalité partage") +
+         x = "Salary range",
+         y = "DI share") +
     facet_wrap(facets = ~ factor(
       x = Subgroup
     ),
@@ -517,8 +496,6 @@ This plot zooms in on our "baseline" group and compares it to the Black employee
  
 colors <- met.brewer("Johnson", 5)[c(1,5)]
 
-# Change periods to commas
-options(OutDec= ".")
 
 ggplot(df[df$`Unit of measure` == "DI" &
             df$Subgroup %in% c("Non-Visible Minority Employees", "Black Employees"),]) +
@@ -558,18 +535,10 @@ plot3_fr <- df
 #French labels
 plot3_fr$Subgroup <- factor(plot3_fr$Subgroup,
                       levels = c("Non-Visible Minority Employees", "Visible Minority Employees",  "Employees with Disabilities", "Indigenous Employees", "Black Employees"),
-                      labels = c("Employés qui ne sont pas une\nmembre de minorités visibles", "Employés membres\n de minorités visibles",  "Employés en\nsituation de handicap", "Employés autochtones", "Employés Noirs"))
-
-# Change salary categories to have commas instead of periods
-plot3_fr$`Salary range` <- factor(plot3_fr$`Salary range`,
-                            levels = c("<60.0K", "60.0-69.9K", "70.0-84.9K", "85.0-99.9K", "100.0K+"),
-                            labels = c("<60,0K", "60,0-69,9K", "70,0-84,9K", "85,0-99,9K", "100,0K+"))
- 
-# Change periods to commas
-options(OutDec= ",")
+                      labels = c("Employés ne faisant \n pas partie des minorités visibles", "Employés appartenant \n à une minorité visible",  "Employés en\n  Situation de Handicap", "Employés Indigène", "Employés Noire"))
 
 ggplot(plot3_fr[plot3_fr$`Unit of measure` == "DI" &
-            plot3_fr$Subgroup %in% c("Employés qui ne sont pas une\nmembre de minorités visibles", "Employés Noirs"),]) +
+            plot3_fr$Subgroup %in% c("Employés ne faisant \n pas partie des minorités visibles", "Employés Noire"),]) +
   geom_bar(stat = "identity",
            position = "dodge",
            aes(x = Subgroup,
@@ -592,7 +561,7 @@ ggplot(plot3_fr[plot3_fr$`Unit of measure` == "DI" &
        y = "Indice de disproportionnalité",
        fill = NULL) + 
   guides(fill = "none", 
-         alpha = guide_legend(title = "Échelle salariale"))
+         alpha = guide_legend(title = "Èchelle Salariale"))
   
   
 
