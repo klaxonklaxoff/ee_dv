@@ -277,8 +277,10 @@ salarydataplot1 <-  df %>% filter(`Unit of measure` == "DI")
 colors = met.brewer("Johnson", 5)
 
 # Changing plot to function 
+plot1_bilingual <- function(language) {
 
-# Bar plot showing salary ranges by group 
+    if(language == "en"){
+    # Bar plot showing salary ranges by group 
 ggplot(salarydataplot1, aes(fill = Subgroup, 
                             y = Value,
                             x = `Salary range`)) + 
@@ -307,27 +309,28 @@ ggplot(salarydataplot1, aes(fill = Subgroup,
             x= "100.0K+",
             hjust = .25, 
             label = "Underrepresented")
-
-
-```
-
-
-## Français
-```{r Plot 1 French, echo = FALSE, message = FALSE, warning = FALSE, fig.width = 10, fig.height = 7.5}
+  } else {
 # Select only DI data 
-salarydataplot1 <-  df %>% filter(`Unit of measure` == "DI")
+salarydataplot1_fr <-  df %>% filter(`Unit of measure` == "DI")
 
 # Make a vector with corresponding colors
 colors = met.brewer("Johnson", 5)
 
+# Change salary categories to have commas instead of periods
+salarydataplot1_fr$`Salary range` <- factor(salarydataplot1_fr$`Salary range`,
+                            levels = c("<60.0K", "60.0-69.9K", "70.0-84.9K", "85.0-99.9K", "100.0K+"),
+                            labels = c("<60,0K", "60,0-69,9K", "70,0-84,9K", "85,0-99,9K", "100,0K+"))
+ 
+# Change periods to commas
+options(OutDec= ",")
 
 #French labels
-salarydataplot1$Subgroup <- factor(salarydataplot1$Subgroup,
+salarydataplot1_fr$Subgroup <- factor(salarydataplot1_fr$Subgroup,
                       levels = c("Non-Visible Minority Employees", "Visible Minority Employees",  "Employees with Disabilities", "Indigenous Employees", "Black Employees"),
                       labels = c("Employés ne faisant \n pas partie des minorités visibles", "Employés appartenant \n à une minorité visible",  "Employés en\n  Situation de Handicap", "Employés Indigène", "Employés Noire"))
 
 # Bar plot showing salary ranges by group 
-ggplot(salarydataplot1, aes(fill = Subgroup, 
+ggplot(salarydataplot1_fr, aes(fill = Subgroup, 
                             y = Value,
                             x = `Salary range`)) + 
   geom_bar(position = 'dodge', 
@@ -355,6 +358,22 @@ ggplot(salarydataplot1, aes(fill = Subgroup,
             x= "100.0K+",
             hjust = .25, 
             label = "Sous-représentés")
+  }
+  
+}
+
+plot1_bilingual(language = "en")
+
+
+
+```
+
+
+## Français
+```{r Plot 1 French, echo = FALSE, message = FALSE, warning = FALSE, fig.width = 10, fig.height = 7.5}
+
+plot1_bilingual(language = "fr")
+
 ```
 
 
@@ -376,6 +395,8 @@ colors <- met.brewer("Hiroshige", 5)[c(1,4)]
 df$chart_colour <- factor(df$chart_colour, 
                           levels = c("red", "green", NA), 
                           labels = c("Overrepresented", "Underrepresented"))
+
+options(OutDec= ",")
 
 ggplotly({
   ggplot(df[df$`Unit of measure` == "Chart" &
