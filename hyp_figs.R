@@ -60,5 +60,3 @@ ggplot(Dept_data_salaries, aes(x = Group, y = Salary)) +
   theme_minimal() +
   geom_text(aes(label=label), family='fontawesome-webfont', size=6, color = "white")
 
-
-
