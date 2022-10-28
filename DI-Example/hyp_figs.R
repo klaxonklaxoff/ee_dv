@@ -18,10 +18,15 @@ library(tidyverse)
 
 ## Create df ---------------------------------------------------------------
 # Create dataframe with group numbers repeated
-Dept_data <- tibble(Group_count = rep("A", 20) %>% c(rep("B", 20)) %>% c(rep("C", 460)) )
+Dept_data <- tibble(Group_count = rep("A", 20) %>% 
+                      c(rep("B", 20)) %>% 
+                      c(rep("C", 460)) )
 
 # Move data to waffle object for plotting
-Dept_data_waffle <- waffle_iron(Dept_data, aes_d(group = Group_count), rows = 20) %>% mutate(label = fontawesome('fa-male'))
+Dept_data_waffle <- waffle_iron(Dept_data, 
+                                aes_d(group = Group_count), 
+                                rows = 20) %>% 
+  mutate(label = fontawesome('fa-male'))
 
 # 
 
@@ -53,10 +58,47 @@ Dept_data_salaries <- data.frame(Group, Salary, Placement) %>% mutate(label = fo
 Dept_data_salaries$Salary <- factor(Dept_data_salaries$Salary, 
                                     levels = c("<60.0K", "60.0-69.9K", "70.0-84.9K", "85.0-99.9K", "100.0K+"))
 
-    
+            
 ggplot(Dept_data_salaries, aes(x = Group, y = Salary)) +
   geom_dotplot(binaxis = "y", stackdir = "center", aes(fill=Group)) +
   scale_fill_manual(values = colors) +
   theme_minimal() +
   geom_text(aes(label=label), family='fontawesome-webfont', size=6, color = "white")
+
+
+# Plot 3: DI of Hypothetical Employee Salary levels 
+Group <- c(rep("A", 5), rep("B", 5))
+Salary <- c("<60.0K", "60.0-69.9K", "70.0-84.9K", "85.0-99.9K", "100.0K+", "<60.0K", "60.0-69.9K", "70.0-84.9K", "85.0-99.9K", "100.0K+")
+DI <- c(.75, 1, 1.25, 1, 1, 1.5, 1.5, 1, .75, .25)
+
+Salary_di <- data.frame(Group, Salary, DI)
+
+Salary_di$Salary <- factor(Salary_di$Salary, levels = c("<60.0K", "60.0-69.9K", "70.0-84.9K", "85.0-99.9K", "100.0K+"))
+
+colors <- c(met.brewer("Johnson", 5)[c(1,5)])
+
+ggplot(Salary_di) +
+  geom_bar(stat = "identity",
+           position = "dodge",
+           aes(x = Group,
+               y = DI,
+               fill = Group, 
+               alpha = Salary)) +
+  theme_minimal() +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(),
+    axis.line = element_line(colour = "black"), 
+    text = element_text(size = 15),
+    legend.text = element_text(size = 12)
+  ) +
+  scale_fill_manual  (values = colors, 
+  ) +
+  labs(title = NULL,
+       x = "Group",
+       y = "Disproportionality Index",
+       fill = NULL) + 
+  guides(fill="none")
+
 
