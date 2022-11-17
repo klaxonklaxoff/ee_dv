@@ -2706,8 +2706,7 @@ options(OutDec= ".")
 colors <- met.brewer("Johnson", 5)[c(1,5)]
 
 # Plot
-ggplot(datasets_en[datasets_en$`Year` != "2017" &
-                     datasets_en$Subgroup %in% c("Non-Visible Minority Employees", "Black Employees"),]) +
+ggplot(datasets_en[datasets_en$Subgroup %in% c("Non-Visible Minority Employees", "Black Employees"),]) +
   geom_bar(stat = "identity",
            position = "dodge",
            aes(x = Year,
@@ -2726,7 +2725,7 @@ ggplot(datasets_en[datasets_en$`Year` != "2017" &
   scale_fill_manual  (values = colors, 
                       ) +
   labs(title = NULL,
-       x = NULL,
+       x = "Year",
        y = "Disproportionality Index",
        fill = NULL) + 
   guides(fill="none") +
