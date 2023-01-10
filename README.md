@@ -16,7 +16,7 @@ These results affirm the Canadian Clerk of the Privy Council and Secretary to th
 
   
 ## Acknowledgements
- This project was initatated as ask from Dr. Martin Nicholas (Health Canada), Shamir Kanji (Canada Revenue Agency), Sean Karmali (Statistics Canada), Niha Shahzad (Natural Resources Canada), and Muhammed Ali Khan (Indigenous Services Canada). Web scraping and data vizualization was completed by Brittny Vongdara and Catalina Albury (Statistics Canada). 
+ This project was initatated as a request for peer review and data visualization from Dr. Martin Nicholas (Health Canada), Shamir Kanji (Canada Revenue Agency), Sean Karmali (Statistics Canada), Niha Shahzad (Natural Resources Canada), and Muhammed Ali Khan (Indigenous Services Canada). Web scraping and data vizualization was completed by Brittny Vongdara and Catalina Albury (Statistics Canada). 
 
 
 
