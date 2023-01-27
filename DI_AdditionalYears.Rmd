@@ -142,7 +142,7 @@ df_2020 <-
     chart_indigenous = di_indigenous - 1,
     chart_pwd = di_pwd - 1,
   ) %>%
-  select(
+  dplyr::select(
     range_group,
     per_all,
     di_all,
