@@ -115,6 +115,7 @@ get_salary_data <- function(Year) {
 }
 
 # Get data for all years
+# This step usually takes a while to run 
 lapply(years, get_salary_data) %>% 
   bind_rows()
 
@@ -136,38 +137,40 @@ years_data_cat <-
   group_by(salary_range, Year) %>%  
   summarise_all(list( ~ sum(., na.rm = T)))
 
+# Clear workspace of unneeded df's and functions 2 save mem
 rm(salary_df_2017, salary_df_2018, salary_df_2019, salary_df_2020, salary_df_2021, url, get_salary_data, remove_bullish, remove_spaces)
 
-temp <-
-  read.csv("ee_dv_salarybins.csv", fileEncoding = "UTF-8-BOM")
+# read in salary bin data
+temp <-read.csv("ee_dv_salarybins.csv", fileEncoding = "UTF-8-BOM")
 
+# Create final datasets with cumulative frequencies and bins
 df <-
   merge(
-    x = years_data_cat,
-    y = {
+    x = years_data_cat, # read in yearly salary data by group
+    y = { # match dataset to bin categories and widths from different years
         bind_rows(
-    {temp[, c(1:2)] %>% rename(bins = bins_2021, bin_width = bin_width_2021)},
+    {temp[, c(1:2)] %>% rename(bins = bins_2021, bin_width = bin_width_2021)}, 
     {temp[, c(3:4)] %>% rename(bins = bins_2020, bin_width = bin_width_2020)},
     {temp[, c(5:6)] %>% rename(bins = bins_2019, bin_width = bin_width_2019)},
     {temp[, c(7:8)] %>% rename(bins = bins_2018, bin_width = bin_width_2018)},
     {temp[, c(9:10)] %>% rename(bins = bins_2017, bin_width = bin_width_2017)},
     .id = "key"
   ) %>%
-  mutate(year = case_when(
+  mutate(year = case_when( # add year "keys" (html pull indexes years by numbers)
     key == "1" ~ 2021,
     key == "2" ~ 2020,
     key == "3" ~ 2019,
     key == "4" ~ 2018,
     key == "5" ~ 2017
   )) %>% 
-  select(-key) %>% 
+  select(-key) %>%  # remove key data
   filter(!is.na(bins))
     },
     by.x = c("salary_range", "Year"),
     by.y = c("bins", "year"),
     all.x = TRUE
   ) %>%
-  arrange(
+  arrange( # arrange salary ranges from lowest to highest using factors
     Year,
     factor(
       salary_range,
@@ -195,7 +198,7 @@ df <-
         "Total"
       )
   )) %>% 
-  group_by(Year) %>% 
+  group_by(Year) %>% # get cumulative frequencies with cumsum()
     mutate(
       cumsum_all = cumsum(count_all),
       cumsum_black = cumsum(count_black),
@@ -203,27 +206,20 @@ df <-
       cumsum_indigenous = cumsum(count_indigenous),
       cumsum_pwd = cumsum(count_pwd),
       cumsum_non_wm = cumsum(count_non_vm),
-      bin_width_cumsum = cumsum(bin_width) # FIXME: it's giving NA for 2017 because it's the first year
+      bin_width_cumsum = cumsum(bin_width) 
     ) %>%
   ungroup() %>%
-  pivot_longer(
+  pivot_longer( # change data to longform
     cols = c(starts_with("count"), starts_with("cumsum")),
     names_to = "group",
     values_to = "count_cumsum"
   ) %>%
-  group_by(Year, group) %>%
-    mutate(total = ifelse((grepl(pattern = "count_", x = group) & salary_range == "Total"), count_cumsum, NA)) %>%
+  group_by(Year, group) %>% 
+    mutate(total = ifelse((grepl(pattern = "count_", x = group) & salary_range == "Total"), count_cumsum, NA)) %>% # if total, make cumsum NA
   fill(total, .direction = "up") %>% 
   ungroup() %>% 
-  mutate(half_pop = total/2) %>%
-  group_by(Year, group) %>%
-  mutate(median_group_ll = median(count_cumsum)) # FIXME
-
-test <- 
-  df %>% 
-  filter(Year == 2017, group == "count_all", salary_range != "Total")
-
-median(test$count_cumsum) # FIXME: MEDIAN SALARY, I get it now
+  mutate(half_pop = total/2) %>% # get half population per bin
+  group_by(Year, group)
 
 ```
 
@@ -250,52 +246,68 @@ Table 1: Median salary of each group per year.
 # Function for removing non-numeric characters from data
 # Median Calculations -----------------------------------------------------
 
+
+# TEMP
+year = "2021"
+ee_group = "non_vm"
+
 # Create a function that calculates median for each group for a year
+
+  # median = lower limit of median group + ((half pop - cum freq up to median)/ pop of median group) * width of median group
 
 est_median <- function(year, ee_group) {
 
-  df <-
-    years_data_cat %>%
-    filter(Year == year)
+  # pull salary data by year and change back to wide format
+  median_df <-
+    df %>%
+    filter(Year == year) %>% # filter for selected year
+    pivot_wider(names_from = "group", # change back to wide format
+                values_from = c("count_cumsum", 
+                                "total", 
+                                "half_pop")) %>%
+     dplyr::select(-contains(c("total_cumsum", # remove unneeded cols
+                               "total_count",
+                               "half_pop_cumsum"))) 
   
-  # Pull year bins and bin widths
-  # bins <- bin_data[,grep(paste0("bins_", year), colnames(bin_data))]
-  # bin_width <- bin_data[,grep(paste0("bin_width_", year), colnames(bin_data))]
-  # 
-  # # Sort data in correct order by salary range
-  # df_sorted_year <- df %>% 
-  #   mutate(salary_range =  factor(salary_range, levels = bins)) %>%
-  #   arrange(salary_range)   #%>%
-  #    # mutate(bin_width = bin_width) why doesnt this work???
-  # 
-  # # add bin width
-  # df_sorted_year$bin_width <- bin_width[1:nrow(df_sorted_year)]
-  # 
-  # # calculate cumulative frequencies
-  # df_sorted_year[paste("cumsum_", ee_group, sep = "")] <- cumsum(( df_sorted_year[paste("count_", ee_group, sep = "")]))
-  # 
-  # df_sorted_year$cumsum_bins <- cumsum((df_sorted_year$bin_width))
-  # df_sorted_year$cumsum_all <- cumsum(df_sorted_year$count_all)
-  # 
-  # median = lower limit of median group + ((half pop - cum freq up to median)/ pop of median group) * width of median group
-  # 
-  # Find half of the population 
-  # half_pop <- as.numeric(df_sorted_year[df_sorted_year$salary_range == "Total", paste("count_", ee_group, sep = "")]/2)
+  # rename cols
+  median_colnames <- c("salary_range", 
+                       "Year", 
+                       "bin_width",
+                       "bin_width_cumsum", 
+                       "count_all", 
+                       "count_black", 
+                       "count_vm", 
+                       "count_indigenous", 
+                       "count_pwd", 
+                       "count_non_vm",
+                       "cumsum_all",
+                       "cumsum_black",
+                       "cumsum_vm",
+                       "cumsum_indigenous",
+                       "cumsum_pwd",
+                       "cumsum_non_vm",
+                       "half_pop_all",
+                       "half_pop_black",
+                       "half_pop_vm",
+                       "half_pop_indigenous",
+                       "half_pop_pwd",
+                       "half_pop_non_vm")
+  colnames(median_df) <- median_colnames
   
   # find lower limit of median group
-  median_group_ll <- max(df_sorted_year$cumsum_bins[df_sorted_year[paste("cumsum_", ee_group, sep = "")] < half_pop], na.rm=TRUE)
+  median_group_ll <- max(median_df$bin_width_cumsum[median_df[paste("cumsum_", ee_group, sep = "")] < first(median_df[paste("half_pop_", ee_group, sep = "")])[1]], na.rm=TRUE)
   
   # find the cumulative frequncy up the median
-  cumsum_uptomedian <- max(df_sorted_year[paste("cumsum_", ee_group, sep = "")][df_sorted_year[paste("cumsum_", ee_group, sep = "")]< half_pop], na.rm=TRUE)
+  cumsum_uptomedian <- max(median_df[paste("cumsum_", ee_group, sep = "")][median_df[paste("cumsum_", ee_group, sep = "")]< first(median_df[paste("half_pop_", ee_group, sep = "")])[1]], na.rm=TRUE)
   
   # find the frequency of the median group
-  freq_mediangroup <- df_sorted_year[paste("count_", ee_group, sep = "")][df_sorted_year[paste("cumsum_", ee_group, sep = "")]> half_pop][1]
+  freq_mediangroup <- median_df[paste("count_", ee_group, sep = "")][median_df[paste("cumsum_", ee_group, sep = "")] > first(median_df[paste("half_pop_", ee_group, sep = "")])[1]][1]
   
   # find the width of the median group 
-  width_mediangroup <- df_sorted_year$bin_width[df_sorted_year[paste("cumsum_", ee_group, sep = "")]> half_pop][1]
+  width_mediangroup <- median_df$bin_width[median_df[paste("cumsum_", ee_group, sep = "")] > first(median_df[paste("half_pop_", ee_group, sep = "")])[1]][1]
   
   # calculate median [finally (●'◡'●)]
-  median <- median_group_ll + ((half_pop - cumsum_uptomedian ) / freq_mediangroup) * width_mediangroup  
+  median <- median_group_ll + ((first(median_df[paste("half_pop_", ee_group, sep = "")])[1] - cumsum_uptomedian ) / freq_mediangroup) * width_mediangroup  
   
   # Create output and place in global environment
   assign("median_table", 
@@ -341,10 +353,10 @@ for (i in 1:length(groups)){
 }
 
 # Concat all median df's together with rbind
-median_df <- rbind(median_df_2021, median_df_2020, median_df_2019, median_df_2018, median_df_2017)
+median_df_final <- rbind(median_df_2021, median_df_2020, median_df_2019, median_df_2018, median_df_2017)
 
 # Swap to wide format for presentation
-median_df_wide <- spread(median_df, group, median)
+median_df_wide <- spread(median_df_final, group, median)
 
 # Add better group labels 
 colnames(median_df_wide) <- c("Year", "All Employees", "Black Employees", "Indigenous Employees", "Non-Visual Minority Employees", "Employees with Disabilities", "Visual Minority Employees")
@@ -2741,8 +2753,6 @@ ggplot(salarydataplot1_fr_2017, aes(fill = Subgroup,
 # Plot 5: DI of Black Employees vs Non-Visible Minority Employees over Time
 
 ```{r , warning = FALSE, echo =  FALSE, message = FALSE, fig.width = 10, fig.height = 7.5}
-library(plyr)
-library(MetBrewer)
 
 # Merge datasets from all years
 
@@ -2757,11 +2767,25 @@ AppendMe <- function(dfNames) {
 datasets_en <- AppendMe(c("salarydataplot1", "salarydataplot1_2020", "salarydataplot1_2019", "salarydataplot1_2018", "salarydataplot1_2017"))
 
 # Change id columns to years using factors
-datasets_en$source <- revalue(datasets_en$source, c(salarydataplot1 = "2021", salarydataplot1_2020 = "2020", salarydataplot1_2019 = "2019", salarydataplot1_2018 = "2018", salarydataplot1_2017 = "2017"))
+datasets_en$source <- dplyr::recode(datasets_en$source, salarydataplot1 = "2021", 
+                                salarydataplot1_2020 = "2020", 
+                                salarydataplot1_2019 = "2019", 
+                                salarydataplot1_2018 = "2018", 
+                                salarydataplot1_2017 = "2017")
 
 
 # Add a quantile column corresponding to salary ranges
-datasets_en$quantile <- revalue(datasets_en$`Salary range`, c("<60.0K" = " Bottom 20th Percentile", "60.0-69.9K" = "20th to 40th Percentile", "70.0-84.9K" = "40th to 60th Percentile", "85.0-99.9K" = "60th to 80th Percentile", "100.0K+" = "Top 20th Percentile", "<55.0K" = " Bottom 20th Percentile", "55.0-64.9K" = "20th to 40th Percentile", "65.0-79.9K" = "40th to 60th Percentile", "80.0-94.9K" = "60th to 80th Percentile", "95.0K+" = "Top 20th Percentile"))
+datasets_en$quantile <- dplyr::recode(datasets_en$`Salary range`, 
+                                      "<60.0K" = " Bottom 20th Percentile",
+                                      "60.0-69.9K" = "20th to 40th Percentile",
+                                      "70.0-84.9K" = "40th to 60th Percentile",
+                                      "85.0-99.9K" = "60th to 80th Percentile",
+                                      "100.0K+" = "Top 20th Percentile", 
+                                      "<55.0K" = " Bottom 20th Percentile",
+                                      "55.0-64.9K" = "20th to 40th Percentile",
+                                      "65.0-79.9K" = "40th to 60th Percentile",
+                                      "80.0-94.9K" = "60th to 80th Percentile",
+                                      "95.0K+" = "Top 20th Percentile")
 
 
 # Remove uneeded column
@@ -2804,6 +2828,6 @@ ggplot(datasets_en[datasets_en$Subgroup %in% c("Non-Visible Minority Employees",
 
 ```
 
-
+Note: Quantiles represent on 20% of each population +/- 6%. 
 
 
