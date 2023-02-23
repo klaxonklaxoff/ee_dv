@@ -25,7 +25,7 @@ library(dplyr)
 ```
 
 # Introduction 
-Here we demonstrate the systemic career stagnation faced by Black employees in the public service. This data is based on self identification of equity-deserving groups, and represents pre-tax salary ranges excluding bonuses and promotions, [publically availble here](https://www.canada.ca/en/treasury-board-secretariat/services/innovation/human-resources-statistics/diversity-inclusion-statistics.html). Each data series from 2017 to 2021 represents the salaries of public servants (excluding the CRA) at a single time point, not reflecting changes across an entire year. The most recent data was collected in March of 2021. Please note that this data was not imputed for suppressed numbers. Furthermore, Black employee data is contained within visual minority (VM) data. However, Indigenous data is not contained with the VM category, and are separately analyzed, in accordance with data collection under the Employment Equity Act. For more information and to access the scripts used to produce this analysis, visit the project's [GitHub repository](https://github.com/klaxonklaxoff/ee_dv).
+Here we demonstrate the systemic career stagnation faced by Black employees in the public service. This data is based on self identification of equity-deserving groups, and represents pre-tax salary ranges excluding bonuses and promotions, [publically availble here](https://www.canada.ca/en/treasury-board-secretariat/services/innovation/human-resources-statistics/diversity-inclusion-statistics.html). Each data series from 2017 to 2021 represents the salaries of public servants (excluding the CRA) at a single time point, not reflecting changes across an entire year. The most recent data was collected in March of 2021. The data was imputed for suppressed numbers (for exact values, see the repository). Furthermore, Black employee data is contained within visible minority (VM) data. However, Indigenous data is not contained with the VM category, and are separately analyzed, in accordance with data collection under the Employment Equity Act. For more information and to access the scripts used to produce this analysis, visit the project's [GitHub repository](https://github.com/klaxonklaxoff/ee_dv).
 
 
 
@@ -138,8 +138,7 @@ get_salary_data <- function(Year) {
              mutate_at(vars(matches("count")), remove_bullish) %>% # remove extra characters
               mutate_at(vars(matches("salary")), remove_spaces) %>% # remove extra spaces
              filter(!grepl("Notes", salary_range)) %>% # remove unneeded columns
-             select(-c("Black")) %>%
-             mutate(count_non_vm = count_all - count_vm)
+             select(-c("Black"))
          }, 
          envir=globalenv())
 }
@@ -155,7 +154,7 @@ lapply(years, get_salary_data) %>%
 years_data <- paste("salary_df", years, sep = "_")
 years_data_cat <- mget(years_data)
 
-# Concat all year's data into a single dataframe 
+# Concat all year's data into a single dataframe
 years_data_cat <- do.call("rbind", years_data_cat)
 
 # Make a year column and remove unnessecary row names
@@ -167,6 +166,48 @@ rownames(years_data_cat) <- NULL
 years_data_cat$salary_range[grepl('Total',years_data_cat$salary_range)] <- 'Total'
 years_data_cat <- years_data_cat %>% dplyr::group_by(salary_range, Year) %>%  summarise_all(list(~ sum(., na.rm = T)))
 
+# Imputation: add in imputed values to replace supressed numbers
+imputation_data <- read.csv("imputation_estimates.csv", encoding = "UTF-8")
+imputation_data$salary_range <- str_replace_all(imputation_data$salary_range, "\\s", " ")
+
+
+# Loop to impute numbers into df
+for (i in 1:nrow(imputation_data)){
+
+  # separate imputation date into groups
+  imputation_data_black <- imputation_data %>% 
+    filter(Group == "count_black")
+  imputation_data_indigenous <- imputation_data %>% 
+    filter(Group == "count_indigenous")
+  imputation_data_vm <- imputation_data %>% 
+    filter(Group == "count_vm")
+
+  # Use case_when to meet conditions from imputation data
+  years_data_cat <- years_data_cat %>% 
+    mutate(old_val = count_black) %>%
+    mutate(count_black = case_when(
+        Year == imputation_data_black$Year[i] & 
+          salary_range == imputation_data_black$salary_range[i] ~  imputation_data_black$value[i], 
+        .default = old_val
+      )
+    ) %>%
+    mutate(old_val = count_indigenous) %>%
+    mutate(count_indigenous = case_when(
+        Year == imputation_data_indigenous$Year[i] & 
+          salary_range == imputation_data_indigenous$salary_range[i] ~  imputation_data_indigenous$value[i], 
+        .default = old_val
+      )
+    ) %>%
+        mutate(old_val = count_vm) %>%
+    mutate(count_vm = case_when(
+        Year == imputation_data_vm$Year[i] & 
+          salary_range == imputation_data_vm$salary_range[i] ~  imputation_data_vm$value[i], 
+        .default = old_val
+      )
+    ) %>%
+    select(-c(old_val)) %>%
+             mutate(count_non_vm = count_all - count_vm) # calculate non vm (all - vm's)
+}
 
 
 
@@ -174,10 +215,7 @@ years_data_cat <- years_data_cat %>% dplyr::group_by(salary_range, Year) %>%  su
 
 # Create a function that calculates median for each group for a year
 
-# Inputs: group, year
-
-year <- "2018"
-ee_group <- "non_vm"
+# Read in salary bins (grouping for quintiles)
 bin_data <- read.csv("ee_dv_salarybins.csv", fileEncoding="UTF-8-BOM")
 
 
@@ -241,7 +279,7 @@ est_median <- function(year, ee_group) {
 # run across all years and groups
 groups <- c("black", "vm", "indigenous", "pwd", "non_vm", "all")
 
-# NOTE: How can do this last part better??
+# Create empty vectors
 median_df_2021 <- data.frame(median = NA, med_year = NA, group = NA)
 median_df_2020 <- data.frame(median = NA, med_year = NA, group = NA)
 median_df_2019 <- data.frame(median = NA, med_year = NA, group = NA) 
@@ -277,7 +315,7 @@ median_df <- rbind(median_df_2021, median_df_2020, median_df_2019, median_df_201
 median_df_wide <- spread(median_df, group, median)
 
 # Add better group labels 
-colnames(median_df_wide) <- c("Year", "All Employees", "Black Employees", "Indigenous Employees", "Non-Visual Minority Employees", "Employees with Disabilities", "Visual Minority Employees")
+colnames(median_df_wide) <- c("Year", "All Employees", "Black Employees", "Indigenous Employees", "Non-Visible Minority Employees", "Employees with Disabilities", "Visible Minority Employees")
 
 theme_zebra(align(flextable(median_df_wide), align = "center"))
 
@@ -303,11 +341,17 @@ di_df_2021 <- years_data_cat %>%
         "50,000 to 54,999",
         "55,000 to 59,999"
       ) ~ "Less than $60,000",
-      salary_range %in% c("60,000 to 64,999", "65,000 to 69,999") ~ "$60,000 to $69,999",
-      salary_range %in% c("70,000 to 74,999", "75,000 to 79,999", "80,000 to 84,999") ~ "$70,000 to $84,999",
+      salary_range %in% c("60,000 to 64,999",
+                          "65,000 to 69,999"
+                          ) ~ "$60,000 to $69,999",
+      salary_range %in% c("70,000 to 74,999", 
+                          "75,000 to 79,999", 
+                          "80,000 to 84,999"
+                          ) ~ "$70,000 to $84,999",
       salary_range %in% c("85,000 to 89,999",
                           "90,000 to 94,999",
-                          "95,000 to 99,999") ~ "$85,000 to $99,999",
+                          "95,000 to 99,999"
+                          ) ~ "$85,000 to $99,999",
       salary_range %in% c(
         "100,000 to 149,999",
         "150,000 to 199,999",
@@ -1313,740 +1357,6 @@ ggplot(plot3_fr[plot3_fr$`Unit of measure` == "DI" &
 
 
 
-
-<!-- ```{r , warning = FALSE, echo =  FALSE, message = FALSE} -->
-<!-- # Load libraries ---- -->
-<!-- library(rvest) -->
-<!-- library(dplyr) -->
-<!-- library(tidyr) -->
-<!-- library(plotly) -->
-<!-- library(flextable) -->
-<!-- library(stringr) -->
-<!-- library(MetBrewer) -->
-
-<!-- # Function ---- -->
-<!-- remove_commas <- function(comma_cols) { -->
-<!--   as.numeric(gsub( -->
-<!--     pattern = ",", -->
-<!--     replacement = "", -->
-<!--     x = comma_cols -->
-<!--   )) -->
-<!-- } -->
-
-
-
-<!-- # Refer to TBS website for web scraping -->
-<!-- url <- -->
-<!--   "https://www.canada.ca/en/treasury-board-secretariat/services/innovation/human-resources-statistics/diversity-inclusion-statistics/distribution-public-service-canada-employees-designated-sub-group-salary-range-" -->
-
-
-<!-- # 2020----- -->
-
-<!-- df_2020 <- -->
-<!--   merge(x = { -->
-<!--     ## Visible Minority and Black employees ---- -->
-<!--     {1 -->
-<!--       html_nodes(read_html(paste0(url, -->
-<!--                                   "members-visible-minorities")), "table") %>% -->
-<!--         html_table(fill = TRUE) -->
-<!--     }[[2]][-c(1, 19), c(1:4, 25)] %>% # retrieve all employees and total vm column -->
-<!--       rename( -->
-<!--         salary_range = "Salary range ($)", -->
-<!--         count_all = "All employees", -->
-<!--         count_black = "Black", -->
-<!--         count_vm = "Members of visible minorities" -->
-<!--       ) -->
-<!--   }, -->
-<!--   y = { -->
-<!--     ## Indigenous ---- -->
-<!--     { -->
-<!--       html_nodes(read_html(paste0(url, -->
-<!--                                   "indigenous-peoples")), "table") %>% -->
-<!--         html_table(fill = TRUE) -->
-<!--     }[[2]][-c(1, 19), c(1, 11)] %>% # retrieve total indigenous column -->
-<!--       rename(salary_range = "Salary range ($)", -->
-<!--              count_indigenous = "Indigenous Peoples") -->
-<!--   }, -->
-<!--   by = "salary_range", -->
-<!--   all = TRUE) %>% -->
-<!--   merge(y = { -->
-<!--     ## Persons with disabilities ---- -->
-<!--     { -->
-<!--       html_nodes(read_html(paste0(url, -->
-<!--                                   "persons-disabilities")), "table") %>% -->
-<!--         html_table(fill = TRUE) -->
-<!--     }[[2]][-c(1, 19), c(1, 15)] %>% # retrieve total pwd column -->
-<!--       rename(salary_range = "Salary range ($)", -->
-<!--              count_pwd = "Persons with disabilities") -->
-<!--   }, -->
-<!--   by = "salary_range", -->
-<!--   all = TRUE) %>% -->
-<!--   mutate(across(everything(), ~ replace(., . ==  "Table 1 Footnote *" , NA))) %>% # replace foonote with NA -->
-<!--   mutate_at(vars(matches("count")), remove_commas) %>% # remove commas -->
-<!--   mutate( -->
-<!--     salary_range = sub( -->
-<!--       pattern = "    ", -->
-<!--       replacement = " ", -->
-<!--       x = salary_range -->
-<!--     ), # remove extra spaces in salary range column -->
-<!--     range_group = case_when( -->
-<!--       salary_range %in% c("Under 50,000", -->
-<!--                           "50,000 to 54,999", -->
-<!--                           "55,000 to 59,999" -->
-<!--       ) ~ "Less than $60,000", -->
-<!--       salary_range %in% c("60,000 to 64,999", -->
-<!--                           "65,000 to 69,999" -->
-<!--       ) ~ "$60,000 to $69,999", -->
-<!--       salary_range %in% c("70,000 to 74,999", -->
-<!--                           "75,000 to 79,999", -->
-<!--                           "80,000 to 84,999" -->
-<!--                           ) ~ "$70,000 to $84,999", -->
-<!--       salary_range %in% c("85,000 to 89,999", -->
-<!--                           "90,000 to 94,999", -->
-<!--                           "95,000 to 99,999" -->
-<!--                           ) ~ "$85,000 to $99,999", -->
-<!--       salary_range %in% c( -->
-<!--         "100,000 to 149,999", -->
-<!--         "150,000 to 199,999", -->
-<!--         "200,000 to 249,999", -->
-<!--         "250,000 and over" -->
-<!--       ) ~ "Over $100,000K", -->
-<!--       TRUE ~ "All ranges" -->
-<!--     ) -->
-<!--   ) %>% # group salary ranges to match Dr. Martin's numbers -->
-<!--   dplyr::group_by(range_group) %>% -->
-<!--   dplyr::summarize( -->
-<!--     count_all = sum(count_all, na.rm = TRUE), -->
-<!--     count_black = sum(count_black, na.rm = TRUE), -->
-<!--     count_vm = sum(count_vm, na.rm = TRUE), -->
-<!--     count_non_vm = count_all - count_vm, -->
-<!--     count_indigenous = sum(count_indigenous, na.rm = TRUE), -->
-<!--     count_pwd = sum(count_pwd, na.rm = TRUE)) %>% -->
-<!--   ungroup() # summarize values in predetermined salary range groups -->
-
-<!-- #'NOTE [needed to reorder the rows before this chunk of code] -->
-<!-- df_2020 <- -->
-<!--   df_2020[c(5, 1, 2, 3, 6, 4), ] %>% -->
-<!--   dplyr::mutate( -->
-<!--     # create new column for percentage of representation within subgroup -->
-<!--     per_all = round(count_all / count_all[n()] * 100, 2), -->
-<!--     per_black = round(count_black / count_black[n()] * 100, 2), -->
-<!--     per_vm = round(count_vm / count_vm[n()] * 100, 2), -->
-<!--     per_non_vm = round(count_non_vm / count_non_vm[n()] * 100, 2), -->
-<!--     per_indigenous = round(count_indigenous / count_indigenous[n()] * 100, 2), -->
-<!--     per_pwd = round(count_pwd / count_pwd[n()] * 100, 2), -->
-
-<!--     # create new column for disproportionality index (DI) -->
-<!--     di_all = 1, -->
-<!--     di_black = round(per_black / per_all, 2), -->
-<!--     di_vm = round(per_vm / per_all, 2), -->
-<!--     di_non_vm = round(per_non_vm / per_all, 2), -->
-<!--     di_indigenous = round(per_indigenous / per_all, 2), -->
-<!--     di_pwd = round(per_pwd / per_all, 2), -->
-
-<!--     # create new column to highlight difference from 1 for DI -->
-<!--     chart_black = di_black - 1, -->
-<!--     chart_vm = di_vm - 1, -->
-<!--     chart_non_vm = di_non_vm - 1, -->
-<!--     chart_indigenous = di_indigenous - 1, -->
-<!--     chart_pwd = di_pwd - 1, -->
-<!--   ) %>% -->
-<!--   select( -->
-<!--     range_group, -->
-<!--     per_all, -->
-<!--     di_all, -->
-
-<!--     per_black, -->
-<!--     di_black, -->
-<!--     chart_black, -->
-
-<!--     per_vm, -->
-<!--     di_vm, -->
-<!--     chart_vm, -->
-
-<!--     per_non_vm, -->
-<!--     di_non_vm, -->
-<!--     chart_non_vm, -->
-
-<!--     per_indigenous, -->
-<!--     di_indigenous, -->
-<!--     chart_indigenous, -->
-
-<!--     per_pwd, -->
-<!--     di_pwd, -->
-<!--     chart_pwd -->
-<!--   ) -->
-
-<!-- # Create table to show raw data -->
-<!-- # Remove chart columns amd convert to flextable object -->
-<!-- export_table <- flextable(select(df_2020, -contains("chart"))) -->
-
-<!-- # Change header labels -->
-<!-- export_table <- set_header_labels(export_table, -->
-<!--                                   values = list( -->
-<!--                                     range_group = "Salary Range", -->
-<!--                                     per_all = "Percent", -->
-<!--                                     di_all = "DI", -->
-<!--                                     per_black = "Percent", -->
-<!--                                     di_black = "DI", -->
-<!--                                     per_vm = "Percent", -->
-<!--                                     di_vm = "DI", -->
-<!--                                     per_non_vm = "Percent", -->
-<!--                                     di_non_vm = "DI", -->
-<!--                                     per_indigenous = "Percent", -->
-<!--                                     di_indigenous = "DI", -->
-<!--                                     per_pwd = "Percent", -->
-<!--                                     di_pwd = "DI" -->
-<!--                                   ) -->
-<!-- ) -->
-
-
-<!-- # Create table to show raw data -->
-<!-- # Remove chart columns amd convert to flextable object -->
-<!-- export_table_2020 <- flextable(select(df_2020, -contains("chart"))) -->
-
-<!-- # Change header labels -->
-<!-- export_table_2020 <- set_header_labels(export_table_2020, -->
-<!--   values = list( -->
-<!--     range_group = "Salary Range", -->
-<!--     per_all = "Percent", -->
-<!--     di_all = "DI", -->
-<!--     per_black = "Percent", -->
-<!--     di_black = "DI", -->
-<!--     per_vm = "Percent", -->
-<!--     di_vm = "DI", -->
-<!--     per_non_vm = "Percent", -->
-<!--     di_non_vm = "DI", -->
-<!--     per_indigenous = "Percent", -->
-<!--     di_indigenous = "DI", -->
-<!--     per_pwd = "Percent", -->
-<!--     di_pwd = "DI" -->
-<!--   ) -->
-<!-- ) -->
-
-<!-- export_table_2020 <-  add_header_row(export_table_2020, -->
-<!--                      colwidths = c(1, 2,2,2,2,2,2), -->
-<!--                      values = c(" ", "All Employees", "Black Employees", "All Visible Minority Employees", "Non-Visible Minority Employees", "Indigenous Employees", "Employees with Disabilities")) -->
-
-<!-- export_table_2020 <- add_header_lines(export_table_2020, values = "2020") -->
-
-<!-- theme_zebra(export_table_2020) -->
-
-
-
-
-
-<!-- # 2019 ------ -->
-<!-- df_2019 <- -->
-<!--   merge(x = { -->
-<!--     ## Visible Minority and Black employees ---- -->
-<!--     {1 -->
-<!--       html_nodes(read_html(paste0(url, -->
-<!--                                   "members-visible-minorities")), "table") %>% -->
-<!--         html_table(fill = TRUE) -->
-<!--     }[[3]][-c(1, 19), c(1:4, 25)] %>% # retrieve all employees and total vm column -->
-<!--       rename( -->
-<!--         salary_range = "Salary range ($)", -->
-<!--         count_all = "All employees", -->
-<!--         count_black = "Black", -->
-<!--         count_vm = "Members of visible minorities" -->
-<!--       ) -->
-<!--   }, -->
-<!--   y = { -->
-<!--     ## Indigenous ---- -->
-<!--     { -->
-<!--       html_nodes(read_html(paste0(url, -->
-<!--                                   "indigenous-peoples")), "table") %>% -->
-<!--         html_table(fill = TRUE) -->
-<!--     }[[3]][-c(1, 19), c(1, 11)] %>% # retrieve total indigenous column -->
-<!--       rename(salary_range = "Salary range ($)", -->
-<!--              count_indigenous = "Indigenous Peoples") -->
-<!--   }, -->
-<!--   by = "salary_range", -->
-<!--   all = TRUE) -->
-
-
-<!-- df_2019$count_vm[16] <- "34,004" # Fix comma error -->
-
-
-<!-- df_2019 <-  df_2019 %>% -->
-<!--   merge(y = { -->
-<!--     ## Persons with disabilities ---- -->
-<!--     { -->
-<!--       html_nodes(read_html(paste0(url, -->
-<!--                                   "persons-disabilities")), "table") %>% -->
-<!--         html_table(fill = TRUE) -->
-<!--     }[[3]][-c(1, 19), c(1, 15)] %>% # retrieve total pwd column -->
-<!--       rename(salary_range = "Salary range ($)", -->
-<!--              count_pwd = "Persons with disabilities") -->
-<!--   }, -->
-<!--   by = "salary_range", -->
-<!--   all = TRUE) %>% -->
-<!--   mutate(across(everything(), ~ replace(., . ==  "Table 1 Footnote *" , NA))) %>% # replace foonote with NA -->
-<!--   mutate_at(vars(matches("count")), remove_commas) %>% # remove commas -->
-<!--   mutate( -->
-<!--     salary_range = sub( -->
-<!--       pattern = "    ", -->
-<!--       replacement = " ", -->
-<!--       x = salary_range -->
-<!--     ), # remove extra spaces in salary range column -->
-<!--     range_group = case_when( -->
-<!--       salary_range %in% c("Under 15,000", -->
-<!--                           "15,000 to 49,999", -->
-<!--                           "50,000 to 54,999", -->
-<!--                           "55,000 to 59,999" -->
-<!--       ) ~ "Less than $60,000", -->
-<!--       salary_range %in% c("60,000 to 64,999", -->
-<!--                           "65,000 to 69,999" -->
-<!--       ) ~ "$60,000 to $69,999", -->
-<!--       salary_range %in% c("70,000 to 74,999", -->
-<!--                           "75,000 to 79,999", -->
-<!--                           "80,000 to 84,999" -->
-<!--       ) ~ "$70,000 to $84,999", -->
-<!--       salary_range %in% c("85,000 to 89,999", -->
-<!--                           "90,000 to 94,999", -->
-<!--                           "95,000 to 99,999" -->
-<!--       ) ~ "$85,000 to $99,999", -->
-<!--       salary_range %in% c("100,000 to 149,999", -->
-<!--                           "150,000 to 199,999", -->
-<!--                           "200,000 to 249,999", -->
-<!--                           "250,000 and over" -->
-<!--       ) ~ "Over $100,000K", -->
-<!--       TRUE ~ "All ranges" -->
-<!--     ) -->
-<!--   ) %>% # group salary ranges to match Dr. Martin's numbers -->
-<!--   dplyr::group_by(range_group) %>% -->
-<!--   dplyr::summarize( -->
-<!--     count_all = sum(count_all, na.rm = TRUE), -->
-<!--     count_black = sum(count_black, na.rm = TRUE), -->
-<!--     count_vm = sum(count_vm, na.rm = TRUE), -->
-<!--     count_non_vm = count_all - count_vm, -->
-<!--     count_indigenous = sum(count_indigenous, na.rm = TRUE), -->
-<!--     count_pwd = sum(count_pwd, na.rm = TRUE)) %>% -->
-<!--   ungroup() # summarize values in predetermined salary range groups -->
-
-
-<!-- #'NOTE [needed to reorder the rows before this chunk of code] -->
-<!-- df_2019 <- -->
-<!--   df_2019[c(5, 1, 2, 3, 6, 4), ] %>% -->
-<!--   dplyr::mutate( -->
-<!--     # create new column for percentage of representation within subgroup -->
-<!--     per_all = round(count_all / count_all[n()] * 100, 2), -->
-<!--     per_black = round(count_black / count_black[n()] * 100, 2), -->
-<!--     per_vm = round(count_vm / count_vm[n()] * 100, 2), -->
-<!--     per_non_vm = round(count_non_vm / count_non_vm[n()] * 100, 2), -->
-<!--     per_indigenous = round(count_indigenous / count_indigenous[n()] * 100, 2), -->
-<!--     per_pwd = round(count_pwd / count_pwd[n()] * 100, 2), -->
-
-<!--     # create new column for disproportionality index (DI) -->
-<!--     di_all = 1, -->
-<!--     di_black = round(per_black / per_all, 2), -->
-<!--     di_vm = round(per_vm / per_all, 2), -->
-<!--     di_non_vm = round(per_non_vm / per_all, 2), -->
-<!--     di_indigenous = round(per_indigenous / per_all, 2), -->
-<!--     di_pwd = round(per_pwd / per_all, 2), -->
-
-<!--     # create new column to highlight difference from 1 for DI -->
-<!--     chart_black = di_black - 1, -->
-<!--     chart_vm = di_vm - 1, -->
-<!--     chart_non_vm = di_non_vm - 1, -->
-<!--     chart_indigenous = di_indigenous - 1, -->
-<!--     chart_pwd = di_pwd - 1, -->
-<!--   ) %>% -->
-<!--   select( -->
-<!--     range_group, -->
-<!--     per_all, -->
-<!--     di_all, -->
-
-<!--     per_black, -->
-<!--     di_black, -->
-<!--     chart_black, -->
-
-<!--     per_vm, -->
-<!--     di_vm, -->
-<!--     chart_vm, -->
-
-<!--     per_non_vm, -->
-<!--     di_non_vm, -->
-<!--     chart_non_vm, -->
-
-<!--     per_indigenous, -->
-<!--     di_indigenous, -->
-<!--     chart_indigenous, -->
-
-<!--     per_pwd, -->
-<!--     di_pwd, -->
-<!--     chart_pwd -->
-<!--   ) -->
-
-<!-- # Create table to show raw data -->
-<!-- # Remove chart columns amd convert to flextable object -->
-<!-- export_table_2019 <- flextable(select(df_2019, -contains("chart"))) -->
-
-<!-- # Change header labels -->
-<!-- export_table_2019 <- set_header_labels(export_table_2019, -->
-<!--   values = list( -->
-<!--     range_group = "Salary Range", -->
-<!--     per_all = "Percent", -->
-<!--     di_all = "DI", -->
-<!--     per_black = "Percent", -->
-<!--     di_black = "DI", -->
-<!--     per_vm = "Percent", -->
-<!--     di_vm = "DI", -->
-<!--     per_non_vm = "Percent", -->
-<!--     di_non_vm = "DI", -->
-<!--     per_indigenous = "Percent", -->
-<!--     di_indigenous = "DI", -->
-<!--     per_pwd = "Percent", -->
-<!--     di_pwd = "DI" -->
-<!--   ) -->
-<!-- ) -->
-
-<!-- export_table_2019 <-  add_header_row(export_table_2019, -->
-<!--                      colwidths = c(1, 2,2,2,2,2,2), -->
-<!--                      values = c(" ", "All Employees", "Black Employees", "All Visible Minority Employees", "Non-Visible Minority Employees", "Indigenous Employees", "Employees with Disabilities")) -->
-
-<!-- export_table_2019 <- add_header_lines(export_table_2019, values = "2019") -->
-
-<!-- theme_zebra(export_table_2019) -->
-
-
-<!-- # 2018 ----- -->
-<!-- df_2018 <- -->
-<!--   merge(x = { -->
-<!--     ## Visible Minority and Black employees ---- -->
-<!--     {1 -->
-<!--       html_nodes(read_html(paste0(url, -->
-<!--                                   "members-visible-minorities")), "table") %>% -->
-<!--         html_table(fill = TRUE) -->
-<!--     }[[4]][-c(1, 19), c(1:4, 25)] %>% # retrieve all employees and total vm column -->
-<!--       rename( -->
-<!--         salary_range = "Salary range ($)", -->
-<!--         count_all = "All employees", -->
-<!--         count_black = "Black", -->
-<!--         count_vm = "Members of visible minorities" -->
-<!--       ) -->
-<!--   }, -->
-<!--   y = { -->
-<!--     ## Indigenous ---- -->
-<!--     { -->
-<!--       html_nodes(read_html(paste0(url, -->
-<!--                                   "indigenous-peoples")), "table") %>% -->
-<!--         html_table(fill = TRUE) -->
-<!--     }[[4]][-c(1, 19), c(1, 11)] %>% # retrieve total indigenous column -->
-<!--       rename(salary_range = "Salary range ($)", -->
-<!--              count_indigenous = "Indigenous Peoples") -->
-<!--   }, -->
-<!--   by = "salary_range", -->
-<!--   all = TRUE) %>% -->
-<!--   merge(y = { -->
-<!--     ## Persons with disabilities ---- -->
-<!--     { -->
-<!--       html_nodes(read_html(paste0(url, -->
-<!--                                   "persons-disabilities")), "table") %>% -->
-<!--         html_table(fill = TRUE) -->
-<!--     }[[4]][-c(1, 19), c(1, 15)] %>% # retrieve total pwd column -->
-<!--       rename(salary_range = "Salary range ($)", -->
-<!--              count_pwd = "Persons with disabilities") -->
-<!--   }, -->
-<!--   by = "salary_range", -->
-<!--   all = TRUE) %>% -->
-<!--   mutate(across(everything(), ~ replace(., . ==  "Table 1 Footnote *" , NA))) %>% # replace foonote with NA -->
-<!--   mutate_at(vars(matches("count")), remove_commas) %>% # remove commas -->
-<!--   mutate( -->
-<!--     salary_range = sub( -->
-<!--       pattern = "    ", -->
-<!--       replacement = " ", -->
-<!--       x = salary_range -->
-<!--     ), # remove extra spaces in salary range column -->
-<!--     range_group = case_when( -->
-<!--       salary_range %in% c("Under 50,000", -->
-<!--                           "50,000 to 54,999", -->
-<!--                           "55,000 to 59,999" -->
-<!--                           ) ~ "Less than $60,000", -->
-<!--       salary_range %in% c("60,000 to 64,999", -->
-<!--                           "65,000 to 69,999" -->
-<!--                           ) ~ "$60,000 to $69,999", -->
-<!--       salary_range %in% c("70,000 to 74,999", -->
-<!--                           "75,000 to 79,999", -->
-<!--                           "80,000 to 84,999" -->
-<!--                           ) ~ "$70,000 to $84,999", -->
-<!--       salary_range %in% c("85,000 to 89,999", -->
-<!--                           "90,000 to 94,999", -->
-<!--                           "95,000 to 99,999" -->
-<!--                           ) ~ "$85,000 to $99,999", -->
-<!--       salary_range %in% c("100,000 and over" -->
-<!--                           ) ~ "Over $100,000K", -->
-<!--       TRUE ~ "All ranges" -->
-<!--     ) -->
-<!--   ) %>% # group salary ranges to match Dr. Martin's numbers -->
-<!--   dplyr::group_by(range_group) %>% -->
-<!--   dplyr::summarize( -->
-<!--     count_all = sum(count_all, na.rm = TRUE), -->
-<!--     count_black = sum(count_black, na.rm = TRUE), -->
-<!--     count_vm = sum(count_vm, na.rm = TRUE), -->
-<!--     count_non_vm = count_all - count_vm, -->
-<!--     count_indigenous = sum(count_indigenous, na.rm = TRUE), -->
-<!--     count_pwd = sum(count_pwd, na.rm = TRUE)) %>% -->
-<!--   ungroup() # summarize values in predetermined salary range groups -->
-
-<!-- #'NOTE [needed to reorder the rows before this chunk of code] -->
-<!-- df_2018 <- -->
-<!--   df_2018[c(5, 1, 2, 3, 6, 4), ] %>% -->
-<!--   dplyr::mutate( -->
-<!--     # create new column for percentage of representation within subgroup -->
-<!--     per_all = round(count_all / count_all[n()] * 100, 2), -->
-<!--     per_black = round(count_black / count_black[n()] * 100, 2), -->
-<!--     per_vm = round(count_vm / count_vm[n()] * 100, 2), -->
-<!--     per_non_vm = round(count_non_vm / count_non_vm[n()] * 100, 2), -->
-<!--     per_indigenous = round(count_indigenous / count_indigenous[n()] * 100, 2), -->
-<!--     per_pwd = round(count_pwd / count_pwd[n()] * 100, 2), -->
-
-<!--     # create new column for disproportionality index (DI) -->
-<!--     di_all = 1, -->
-<!--     di_black = round(per_black / per_all, 2), -->
-<!--     di_vm = round(per_vm / per_all, 2), -->
-<!--     di_non_vm = round(per_non_vm / per_all, 2), -->
-<!--     di_indigenous = round(per_indigenous / per_all, 2), -->
-<!--     di_pwd = round(per_pwd / per_all, 2), -->
-
-<!--     # create new column to highlight difference from 1 for DI -->
-<!--     chart_black = di_black - 1, -->
-<!--     chart_vm = di_vm - 1, -->
-<!--     chart_non_vm = di_non_vm - 1, -->
-<!--     chart_indigenous = di_indigenous - 1, -->
-<!--     chart_pwd = di_pwd - 1, -->
-<!--   ) %>% -->
-<!--   select( -->
-<!--     range_group, -->
-<!--     per_all, -->
-<!--     di_all, -->
-
-<!--     per_black, -->
-<!--     di_black, -->
-<!--     chart_black, -->
-
-<!--     per_vm, -->
-<!--     di_vm, -->
-<!--     chart_vm, -->
-
-<!--     per_non_vm, -->
-<!--     di_non_vm, -->
-<!--     chart_non_vm, -->
-
-<!--     per_indigenous, -->
-<!--     di_indigenous, -->
-<!--     chart_indigenous, -->
-
-<!--     per_pwd, -->
-<!--     di_pwd, -->
-<!--     chart_pwd -->
-<!--   ) -->
-
-<!-- # Create table to show raw data -->
-<!-- # Remove chart columns amd convert to flextable object -->
-<!-- export_table_2018 <- flextable(select(df_2018, -contains("chart"))) -->
-
-<!-- # Change header labels -->
-<!-- export_table_2018 <- set_header_labels(export_table_2018, -->
-<!--   values = list( -->
-<!--     range_group = "Salary Range", -->
-<!--     per_all = "Percent", -->
-<!--     di_all = "DI", -->
-<!--     per_black = "Percent", -->
-<!--     di_black = "DI", -->
-<!--     per_vm = "Percent", -->
-<!--     di_vm = "DI", -->
-<!--     per_non_vm = "Percent", -->
-<!--     di_non_vm = "DI", -->
-<!--     per_indigenous = "Percent", -->
-<!--     di_indigenous = "DI", -->
-<!--     per_pwd = "Percent", -->
-<!--     di_pwd = "DI" -->
-<!--   ) -->
-<!-- ) -->
-
-<!-- export_table_2018 <-  add_header_row(export_table_2018, -->
-<!--                      colwidths = c(1, 2,2,2,2,2,2), -->
-<!--                      values = c(" ", "All Employees", "Black Employees", "All Visible Minority Employees", "Non-Visible Minority Employees", "Indigenous Employees", "Employees with Disabilities")) -->
-
-<!-- export_table_2018 <- add_header_lines(export_table_2018, values = "2018") -->
-
-<!-- theme_zebra(export_table_2018) -->
-
-
-<!-- # 2017---- -->
-<!-- df_2017 <- -->
-<!--   merge(x = { -->
-<!--     ## Visible Minority and Black employees ---- -->
-<!--     {1 -->
-<!--       html_nodes(read_html(paste0(url, -->
-<!--                                   "members-visible-minorities")), "table") %>% -->
-<!--         html_table(fill = TRUE) -->
-<!--     }[[5]][-c(1, 19), c(1:4, 25)] %>% # retrieve all employees and total vm column -->
-<!--       rename( -->
-<!--         salary_range = "Salary range ($)", -->
-<!--         count_all = "All employees", -->
-<!--         count_black = "Black", -->
-<!--         count_vm = "Members of visible minorities" -->
-<!--       ) -->
-<!--   }, -->
-<!--   y = { -->
-<!--     ## Indigenous ---- -->
-<!--     { -->
-<!--       html_nodes(read_html(paste0(url, -->
-<!--                                   "indigenous-peoples")), "table") %>% -->
-<!--         html_table(fill = TRUE) -->
-<!--     }[[5]][-c(1, 19), c(1, 11)] %>% # retrieve total indigenous column -->
-<!--       rename(salary_range = "Salary range ($)", -->
-<!--              count_indigenous = "Indigenous Peoples") -->
-<!--   }, -->
-<!--   by = "salary_range", -->
-<!--   all = TRUE) %>% -->
-<!--   merge(y = { -->
-<!--     ## Persons with disabilities ---- -->
-<!--     { -->
-<!--       html_nodes(read_html(paste0(url, -->
-<!--                                   "persons-disabilities")), "table") %>% -->
-<!--         html_table(fill = TRUE) -->
-<!--     }[[5]][-c(1, 19), c(1, 15)] %>% # retrieve total pwd column -->
-<!--       rename(salary_range = "Salary range ($)", -->
-<!--              count_pwd = "Persons with disabilities") -->
-<!--   }, -->
-<!--   by = "salary_range", -->
-<!--   all = TRUE) %>% -->
-<!--   mutate(across(everything(), ~ replace(., . ==  "Table 1 Footnote *" , NA))) %>% # replace foonote with NA -->
-<!--   mutate_at(vars(matches("count")), remove_commas) %>% # remove commas -->
-<!--   mutate( -->
-<!--     salary_range = sub( -->
-<!--       pattern = "    ", -->
-<!--       replacement = " ", -->
-<!--       x = salary_range -->
-<!--     ), # remove extra spaces in salary range column -->
-<!--     range_group = case_when( -->
-<!--       salary_range %in% c("Under 50,000", -->
-<!--                           "50,000 to 54,999" -->
-<!--                           ) ~ "Less than $55,000", -->
-<!--       salary_range %in% c("55,000 to 59,999", -->
-<!--                           "60,000 to 64,999" -->
-<!--                           ) ~ "$55,000 to $64,999", -->
-<!--       salary_range %in% c("65,000 to 69,999", -->
-<!--                           "70,000 to 74,999", -->
-<!--                           "75,000 to 79,999" -->
-<!--                           ) ~ "$65,000 to $79,999", -->
-<!--       salary_range %in% c("80,000 to 84,999", -->
-<!--                           "85,000 to 89,999", -->
-<!--                           "90,000 to 94,999" -->
-<!--                           ) ~ "$80,000 to $94,999", -->
-<!--       salary_range %in% c("95,000 to 99,999", -->
-<!--                           "100,000 and over" -->
-<!--                           ) ~ "Over $95,000K", -->
-<!--       TRUE ~ "All ranges" -->
-<!--     ) -->
-<!--   ) %>% # group salary ranges to match Dr. Martin's numbers -->
-<!--   dplyr::group_by(range_group) %>% -->
-<!--   dplyr::summarize( -->
-<!--     count_all = sum(count_all, na.rm = TRUE), -->
-<!--     count_black = sum(count_black, na.rm = TRUE), -->
-<!--     count_vm = sum(count_vm, na.rm = TRUE), -->
-<!--     count_non_vm = count_all - count_vm, -->
-<!--     count_indigenous = sum(count_indigenous, na.rm = TRUE), -->
-<!--     count_pwd = sum(count_pwd, na.rm = TRUE)) %>% -->
-<!--   ungroup() # summarize values in predetermined salary range groups -->
-
-
-<!-- #'NOTE [needed to reorder the rows before this chunk of code] -->
-<!-- df_2017 <- -->
-<!--   df_2017[c(5, 1, 2, 3, 6, 4), ] %>% -->
-<!--   dplyr::mutate( -->
-<!--     # create new column for percentage of representation within subgroup -->
-<!--     per_all = round(count_all / count_all[n()] * 100, 2), -->
-<!--     per_black = round(count_black / count_black[n()] * 100, 2), -->
-<!--     per_vm = round(count_vm / count_vm[n()] * 100, 2), -->
-<!--     per_non_vm = round(count_non_vm / count_non_vm[n()] * 100, 2), -->
-<!--     per_indigenous = round(count_indigenous / count_indigenous[n()] * 100, 2), -->
-<!--     per_pwd = round(count_pwd / count_pwd[n()] * 100, 2), -->
-
-<!--     # create new column for disproportionality index (DI) -->
-<!--     di_all = 1, -->
-<!--     di_black = round(per_black / per_all, 2), -->
-<!--     di_vm = round(per_vm / per_all, 2), -->
-<!--     di_non_vm = round(per_non_vm / per_all, 2), -->
-<!--     di_indigenous = round(per_indigenous / per_all, 2), -->
-<!--     di_pwd = round(per_pwd / per_all, 2), -->
-
-<!--     # create new column to highlight difference from 1 for DI -->
-<!--     chart_black = di_black - 1, -->
-<!--     chart_vm = di_vm - 1, -->
-<!--     chart_non_vm = di_non_vm - 1, -->
-<!--     chart_indigenous = di_indigenous - 1, -->
-<!--     chart_pwd = di_pwd - 1, -->
-<!--   ) %>% -->
-<!--   select( -->
-<!--     range_group, -->
-<!--     per_all, -->
-<!--     di_all, -->
-
-<!--     per_black, -->
-<!--     di_black, -->
-<!--     chart_black, -->
-
-<!--     per_vm, -->
-<!--     di_vm, -->
-<!--     chart_vm, -->
-
-<!--     per_non_vm, -->
-<!--     di_non_vm, -->
-<!--     chart_non_vm, -->
-
-<!--     per_indigenous, -->
-<!--     di_indigenous, -->
-<!--     chart_indigenous, -->
-
-<!--     per_pwd, -->
-<!--     di_pwd, -->
-<!--     chart_pwd -->
-<!--   ) -->
-
-<!-- # Create table to show raw data -->
-<!-- # Remove chart columns amd convert to flextable object -->
-<!-- export_table_2017 <- flextable(select(df_2017, -contains("chart"))) -->
-
-<!-- # Change header labels -->
-<!-- export_table_2017 <- set_header_labels(export_table_2017, -->
-<!--   values = list( -->
-<!--     range_group = "Salary Range", -->
-<!--     per_all = "Percent", -->
-<!--     di_all = "DI", -->
-<!--     per_black = "Percent", -->
-<!--     di_black = "DI", -->
-<!--     per_vm = "Percent", -->
-<!--     di_vm = "DI", -->
-<!--     per_non_vm = "Percent", -->
-<!--     di_non_vm = "DI", -->
-<!--     per_indigenous = "Percent", -->
-<!--     di_indigenous = "DI", -->
-<!--     per_pwd = "Percent", -->
-<!--     di_pwd = "DI" -->
-<!--   ) -->
-<!-- ) -->
-
-<!-- export_table_2017 <-  add_header_row(export_table_2017, -->
-<!--                      colwidths = c(1, 2,2,2,2,2,2), -->
-<!--                      values = c(" ", "All Employees", "Black Employees", "All Visible Minority Employees", "Non-Visible Minority Employees", "Indigenous Employees", "Employees with Disabilities")) -->
-
-<!-- export_table_2017 <- add_header_lines(export_table_2017, values = "2017") -->
-
-<!-- theme_zebra(export_table_2017) -->
-
-<!-- ``` -->
-
-
-Note: Different salary ranges are used in 2017 to maintain the quantiles (20% per salary category +/-3%)
-
-
-
-
 # Plot 4: DI of all groups by salary range (2020-2017){.tabset}
 ```{r , warning = FALSE, echo =  FALSE, message = FALSE}
 
@@ -2690,8 +2000,8 @@ datasets_en <- AppendMe(c("salarydataplot1", "salarydataplot1_2020", "salarydata
 datasets_en$source <- revalue(datasets_en$source, c(salarydataplot1 = "2021", salarydataplot1_2020 = "2020", salarydataplot1_2019 = "2019", salarydataplot1_2018 = "2018", salarydataplot1_2017 = "2017"))
 
 
-# Add a quantile column corresponding to salary ranges
-datasets_en$quantile <- revalue(datasets_en$`Salary range`, c("<60.0K" = " Bottom 20th Percentile", "60.0-69.9K" = "20th to 40th Percentile", "70.0-84.9K" = "40th to 60th Percentile", "85.0-99.9K" = "60th to 80th Percentile", "100.0K+" = "Top 20th Percentile", "<55.0K" = " Bottom 20th Percentile", "55.0-64.9K" = "20th to 40th Percentile", "65.0-79.9K" = "40th to 60th Percentile", "80.0-94.9K" = "60th to 80th Percentile", "95.0K+" = "Top 20th Percentile"))
+# Add a quintile column corresponding to salary ranges
+datasets_en$quintile <- revalue(datasets_en$`Salary range`, c("<60.0K" = " Bottom 20th Percentile", "60.0-69.9K" = "20th to 40th Percentile", "70.0-84.9K" = "40th to 60th Percentile", "85.0-99.9K" = "60th to 80th Percentile", "100.0K+" = "Top 20th Percentile", "<55.0K" = " Bottom 20th Percentile", "55.0-64.9K" = "20th to 40th Percentile", "65.0-79.9K" = "40th to 60th Percentile", "80.0-94.9K" = "60th to 80th Percentile", "95.0K+" = "Top 20th Percentile"))
 
 
 # Remove uneeded column
@@ -2711,7 +2021,7 @@ ggplot(datasets_en[datasets_en$Subgroup %in% c("Non-Visible Minority Employees",
            aes(x = Year,
                y = DI,
                fill = Subgroup,
-               alpha = quantile)) +
+               alpha = quintile)) +
   theme_minimal() +
   theme(
     panel.grid.major = element_blank(),
@@ -2728,7 +2038,7 @@ ggplot(datasets_en[datasets_en$Subgroup %in% c("Non-Visible Minority Employees",
   coord_cartesian(ylim = c(.5, 1.5)) +
     geom_hline(yintercept = 1,
              linetype = "dashed") +
-  guides(alpha=guide_legend(title="Salary Quantile"), 
+  guides(alpha=guide_legend(title="Salary Quintile"), 
          fill = guide_legend(title = "Group"))
 
 
