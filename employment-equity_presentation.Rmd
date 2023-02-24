@@ -291,7 +291,7 @@ df <-
 ```
 
 # Introduction 
-Here we demonstrate the systemic career stagnation faced by Black employees in the public service. This data is based on self identification of equity-deserving groups, and represents pre-tax salary ranges excluding bonuses and promotions, [publically availble here](https://www.canada.ca/en/treasury-board-secretariat/services/innovation/human-resources-statistics/diversity-inclusion-statistics.html). Each data series from 2017 to 2021 represents the salaries of public servants (excluding the CRA) at a single time point, not reflecting changes across an entire year. The most recent data was collected in March of 2021. Please note that this data was imputed for suppressed numbers (for exact values, see the repository). Furthermore, Black employee data is contained within visible minority (VM) data. However, Indigenous data is not contained with the VM category, and are separately analyzed, in accordance with data collection under the Employment Equity Act. For more information and to access the scripts used to produce this analysis, visit the project's [GitHub repository](https://github.com/klaxonklaxoff/ee_dv).
+Here we demonstrate the systemic career stagnation faced by Black employees in the public service. This data is based on self identification of equity-deserving groups, and represents pre-tax salary ranges excluding bonuses and promotions, [publically availble here](https://www.canada.ca/en/treasury-board-secretariat/services/innovation/human-resources-statistics/diversity-inclusion-statistics.html). Each data series from 2017 to 2021 represents the salaries of public servants (excluding the CRA) at a single time point, not reflecting changes across an entire year. The most recent data was collected in March of 2021. Please note that this data was imputed for suppressed numbers (for exact values, [see here](https://github.com/klaxonklaxoff/ee_dv/blob/main/imputation_estimates.csv)). Furthermore, Black employee data is contained within visible minority (VM) data. However, Indigenous data is not contained with the VM category, and are separately analyzed, due to data collection in accordance with the Employment Equity Act. For more information and to access the scripts used to produce this analysis, visit the project's [GitHub repository](https://github.com/klaxonklaxoff/ee_dv).
 
 
 
@@ -307,7 +307,7 @@ $$ DI_{Black \: employees; <60K } =\frac{23.51\%}{16.70\%} = 1.41$$
 
 # Summary Tables - Median Salary
 
-Table 1: Median salary of each group per year. 
+Table 1: Estimated median salary of each group per year, rounded to the nearest $50. 
 
 ```{r echo=FALSE, message=FALSE, include = FALSE, warning=FALSE}
 # Median Calculations -----------------------------------------------------
